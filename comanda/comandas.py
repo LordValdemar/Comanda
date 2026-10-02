@@ -329,6 +329,14 @@ def alterar_item(comanda_id, item_id):
     try:
         if acao == "entregue":
             mudar_status_item(conexao, item, "entregue")
+            if request.form.get("voltar") == "lista":
+                flash(f"{item['quantidade']}× {item['nome']} entregue na comanda {comanda['numero']}. "
+                      "Foi engano? Abra a comanda e toque em “↩ Não entregue”.", "ok")
+        elif acao == "pronto":
+            # Desfaz um "Entregue" tocado sem querer: o item volta para a lista de prontos.
+            if item["status"] != "entregue" or not item["vai_cozinha"]:
+                raise ErroComanda("Este item não pode voltar para pronto.")
+            mudar_status_item(conexao, item, "pronto")
         elif acao == "cancelar":
             cancelar_item(conexao, comanda, item, request.form.get("motivo"), g.usuario)
             flash(f"Item “{item['nome']}” cancelado.", "ok")

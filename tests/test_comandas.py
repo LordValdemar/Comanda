@@ -54,16 +54,58 @@ def test_fluxo_da_cozinha(logado, app):
     assert [i["nome"] for i in dados["comandas"][0]["itens"]] == ["X-Salada"]  # a lata não vai para a cozinha
     item_id = dados["comandas"][0]["itens"][0]["id"]
 
-    token = {"X-CSRF-Token": logado.get("/cozinha") and _csrf_cozinha(logado)}
-    assert logado.post(f"/api/cozinha/itens/{item_id}", data={"direcao": "avancar"}).status_code == 400  # sem CSRF
-    assert logado.post(f"/api/cozinha/itens/{item_id}", data={"direcao": "avancar"}, headers=token).get_json() == {"status": "preparando"}
-    assert logado.post(f"/api/cozinha/itens/{item_id}", data={"direcao": "voltar"}, headers=token).get_json() == {"status": "pendente"}
-    logado.post(f"/api/cozinha/itens/{item_id}", data={"direcao": "avancar"}, headers=token)
-    logado.post(f"/api/cozinha/itens/{item_id}", data={"direcao": "avancar"}, headers=token)
+    token = {"X-CSRF-Token": _csrf_cozinha(logado)}
+    url = f"/api/cozinha/itens/{item_id}"
+    assert logado.post(url, data={"status": "preparando"}).status_code == 400  # sem CSRF
+    assert logado.post(url, data={"status": "preparando"}, headers=token).get_json() == {"status": "preparando"}
+    # Tocou errado: escolhe direto a situação certa, inclusive voltando.
+    assert logado.post(url, data={"status": "pendente"}, headers=token).get_json() == {"status": "pendente"}
+    assert logado.post(url, data={"status": "pronto"}, headers=token).get_json() == {"status": "pronto"}
+    assert logado.post(url, data={"status": "cancelado"}, headers=token).status_code == 400
     # Pronto: aparece para o garçom servir.
     assert "Prontos para servir" in logado.get("/comandas/").get_data(as_text=True)
     postar(logado, f"/comandas/{comanda_id}/itens/{item_id}", {"acao": "entregue"})
-    assert logado.get("/api/cozinha").get_json() == {"comandas": []}
+    dados = logado.get("/api/cozinha").get_json()
+    assert dados["comandas"] == []
+    # O entregue fica embaixo, para a cozinha desfazer se foi engano.
+    assert [i["id"] for i in dados["recentes"]] == [item_id]
+    logado.post(url, data={"status": "pronto"}, headers=token)
+    assert logado.get("/api/cozinha").get_json()["comandas"][0]["itens"][0]["status"] == "pronto"
+
+
+def test_cozinha_tudo_pronto(logado, app):
+    lanche, lata = preparar(logado)
+    comanda_id = abrir_comanda(logado, 5)
+    postar(logado, f"/comandas/{comanda_id}/itens", {f"qtd_{lanche}": "3", f"qtd_{lata}": "1"})
+    postar(logado, f"/comandas/{comanda_id}/itens", {f"qtd_{lanche}": "1"})
+    token = {"X-CSRF-Token": _csrf_cozinha(logado)}
+    assert logado.post(f"/api/cozinha/comandas/{comanda_id}/pronto", headers=token).get_json() == {"alterados": 2}
+    assert [i["status"] for i in itens(app)] == ["pronto", "entregue", "pronto"]  # a lata continua entregue
+
+
+def test_garcom_desfaz_entregue(logado, app):
+    lanche, lata = preparar(logado)
+    comanda_id = abrir_comanda(logado, 6)
+    postar(logado, f"/comandas/{comanda_id}/itens", {f"qtd_{lanche}": "1", f"qtd_{lata}": "1"})
+    lanche_item, lata_item = (i["id"] for i in itens(app))
+    resposta = postar(logado, f"/comandas/{comanda_id}/itens/{lanche_item}", {"acao": "entregue", "voltar": "lista"},
+                      follow_redirects=True)
+    assert "Não entregue" in resposta.get_data(as_text=True)
+    assert "Não entregue" in logado.get(f"/comandas/{comanda_id}").get_data(as_text=True)
+    postar(logado, f"/comandas/{comanda_id}/itens/{lanche_item}", {"acao": "pronto"})
+    assert itens(app)[0]["status"] == "pronto"
+    # A lata não passa pela cozinha: não tem "pronto" para voltar.
+    postar(logado, f"/comandas/{comanda_id}/itens/{lata_item}", {"acao": "pronto"})
+    assert itens(app)[1]["status"] == "entregue"
+
+
+def test_atualizacao_automatica_nao_gasta_avisos(logado):
+    """A tela que se atualiza sozinha não pode sumir com o aviso que a pessoa ainda vai ver."""
+    postar(logado, "/comandas/", {"numero": "abc"})  # gera o aviso de erro
+    parcial = logado.get("/comandas/", headers={"X-Atualizacao": "1"}).get_data(as_text=True)
+    assert 'id="regiao-abertas"' in parcial and 'id="regiao-prontos"' in parcial
+    assert "Informe o número" not in parcial
+    assert "Informe o número" in logado.get("/comandas/").get_data(as_text=True)
 
 
 def _csrf_cozinha(cliente):

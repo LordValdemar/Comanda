@@ -6,9 +6,17 @@
 {% block conteudo %}
 <div class="barra-cozinha">
   <span id="estado-conexao" class="status">conectando...</span>
-  <span class="dica">Toque no item para avançar: aguardando → preparando → pronto. Segure (ou clique com o botão direito) para voltar um passo.</span>
+  <span class="dica">Toque na situação de cada item. Tocou errado? É só tocar na certa.</span>
   <button type="button" id="som" class="secundario">🔕 Ligar som</button>
 </div>
-<div id="pedidos" class="pedidos"><p class="dica">Carregando...</p></div>
+<div id="pedidos" class="pedidos"><p class="vazio">Carregando...</p></div>
+<details id="recentes" class="recentes" hidden>
+  <summary>Entregues há pouco (<span id="recentes-total">0</span>)</summary>
+  <div id="recentes-lista"></div>
+</details>
+<div id="aviso-desfazer" class="aviso-desfazer" hidden>
+  <span id="aviso-desfazer-texto"></span>
+  <button type="button" id="botao-desfazer">Desfazer</button>
+</div>
 {% endblock %}
 {% block scripts %}<script src="{{ url_for('static', filename='cozinha.js') }}"></script>{% endblock %}

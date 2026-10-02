@@ -2,20 +2,16 @@
 (function () {
   "use strict";
 
-  // Confirmação antes de enviar formulários marcados com data-confirmar.
-  document.querySelectorAll("form[data-confirmar]").forEach(function (form) {
-    form.addEventListener("submit", function (evento) {
-      if (!confirm(form.dataset.confirmar)) evento.preventDefault();
-    });
-  });
-
-  // Pede o motivo (cancelamento de item) e o coloca no campo escondido.
-  document.querySelectorAll("form[data-pedir-motivo]").forEach(function (form) {
-    form.addEventListener("submit", function (evento) {
+  // Confirmação (data-confirmar) e pedido de motivo (data-pedir-motivo) antes de enviar.
+  // Fica no documento inteiro: vale também para as partes da tela que se atualizam sozinhas.
+  document.addEventListener("submit", function (evento) {
+    var form = evento.target;
+    if (form.dataset.confirmar && !confirm(form.dataset.confirmar)) { evento.preventDefault(); return; }
+    if (form.dataset.pedirMotivo) {
       var motivo = prompt(form.dataset.pedirMotivo, "");
       if (!motivo || !motivo.trim()) { evento.preventDefault(); return; }
       form.querySelector("input[name=motivo]").value = motivo.trim();
-    });
+    }
   });
 
   document.querySelectorAll("select[data-enviar-ao-mudar]").forEach(function (campo) {
@@ -67,16 +63,54 @@
     filtro.addEventListener("keydown", function (evento) { if (evento.key === "Enter") evento.preventDefault(); });
   }
 
-  // Listas que mudam sozinhas (comandas abertas): recarrega se ninguém estiver digitando.
-  var segundos = parseInt(document.body.dataset.recarregar, 10);
-  if (segundos > 0) {
-    var mexeu = false;
-    document.addEventListener("input", function () { mexeu = true; });
-    setInterval(function () {
-      var ativo = document.activeElement;
-      var digitando = ativo && (ativo.tagName === "INPUT" || ativo.tagName === "SELECT");
-      if (!mexeu && !digitando && document.visibilityState === "visible") location.reload();
-    }, segundos * 1000);
+  // Partes da tela que mudam sozinhas (data-atualizar): comandas abertas, prontos para servir,
+  // itens da comanda. Busca a própria página de novo e troca só essas partes, sem atrapalhar
+  // quem está digitando em outro lugar da tela.
+  var regioes = document.querySelectorAll("[data-atualizar]");
+  if (regioes.length) {
+    var prontosAntes = document.querySelectorAll("[data-pronto]").length;
+    var audio = null;
+    // Som e vibração só funcionam depois de um toque na tela (regra dos navegadores).
+    document.addEventListener("click", function () {
+      if (!audio && (window.AudioContext || window.webkitAudioContext)) audio = new (window.AudioContext || window.webkitAudioContext)();
+    }, { once: true });
+    var avisarPronto = function () {
+      if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
+      if (!audio) return;
+      var osc = audio.createOscillator();
+      var volume = audio.createGain();
+      osc.frequency.value = 660;
+      volume.gain.value = 0.25;
+      osc.connect(volume);
+      volume.connect(audio.destination);
+      osc.start();
+      osc.stop(audio.currentTime + 0.2);
+    };
+    var atualizarRegioes = function () {
+      if (document.visibilityState !== "visible") return;
+      // Sem os parâmetros da busca: só as partes da tela interessam (e a busca poderia redirecionar).
+      fetch(location.pathname, { credentials: "same-origin", headers: { "X-Atualizacao": "1" } })
+        .then(function (resposta) {
+          // Sessão expirada ou comanda fechada por outra pessoa: recarrega a página inteira.
+          if (resposta.redirected || !resposta.ok) { location.reload(); throw new Error("recarregar"); }
+          return resposta.text();
+        })
+        .then(function (html) {
+          var nova = new DOMParser().parseFromString(html, "text/html");
+          regioes.forEach(function (regiao) {
+            var substituta = nova.getElementById(regiao.id);
+            // Não troca a parte em que a pessoa está mexendo agora.
+            if (!substituta || regiao.contains(document.activeElement)) return;
+            if (regiao.innerHTML !== substituta.innerHTML) regiao.innerHTML = substituta.innerHTML;
+          });
+          var prontosAgora = document.querySelectorAll("[data-pronto]").length;
+          if (prontosAgora > prontosAntes) avisarPronto();
+          prontosAntes = prontosAgora;
+        })
+        .catch(function () {});
+    };
+    setInterval(atualizarRegioes, 5000);
+    document.addEventListener("visibilitychange", atualizarRegioes);
   }
 
   // Cupom: botão de imprimir e impressão automática depois de fechar a conta.

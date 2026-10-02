@@ -9,11 +9,29 @@
   var lista = document.getElementById("pedidos");
   var estado = document.getElementById("estado-conexao");
   var botaoSom = document.getElementById("som");
-  var NOMES = { pendente: "aguardando", preparando: "preparando", pronto: "pronto" };
+  var recentes = document.getElementById("recentes");
+  var recentesLista = document.getElementById("recentes-lista");
+  var recentesTotal = document.getElementById("recentes-total");
+  var aviso = document.getElementById("aviso-desfazer");
+  var avisoTexto = document.getElementById("aviso-desfazer-texto");
+  var botaoDesfazer = document.getElementById("botao-desfazer");
 
-  var conhecidos = null;  // ids já vistos (null = primeira carga, sem apito)
+  // Botões de cada item, na ordem do preparo.
+  var SITUACOES = [
+    ["pendente", "Aguardando"],
+    ["preparando", "Preparando"],
+    ["pronto", "Pronto"],
+    ["entregue", "Entregue"],
+  ];
+  var NOMES = {};
+  SITUACOES.forEach(function (s) { NOMES[s[0]] = s[1]; });
+
+  var conhecidos = null;   // ids já vistos (null = primeira carga, sem apito)
   var somLigado = false;
   var audio = null;
+  var ultimaMudanca = null; // para o botão "Desfazer"
+  var timerAviso = null;
+  var ocupado = false;      // evita redesenhar enquanto um toque está sendo enviado
 
   // O navegador só deixa tocar som depois de um toque na tela: por isso o botão.
   botaoSom.addEventListener("click", function () {
@@ -52,34 +70,70 @@
     return el;
   }
 
-  function desenhar(comandas) {
+  function botoesDeSituacao(item) {
+    var grupo = elemento("div", "botoes-estado");
+    SITUACOES.forEach(function (s) {
+      var botao = elemento("button", "botao-estado estado-" + s[0] + (item.status === s[0] ? " ativo" : ""), s[1]);
+      botao.type = "button";
+      botao.dataset.id = item.id;
+      botao.dataset.status = s[0];
+      botao.dataset.anterior = item.status;
+      botao.dataset.nome = item.quantidade + "× " + item.nome;
+      if (item.status === s[0]) botao.setAttribute("aria-pressed", "true");
+      grupo.appendChild(botao);
+    });
+    return grupo;
+  }
+
+  function desenhar(dados) {
     lista.textContent = "";
-    if (!comandas.length) {
+    if (!dados.comandas.length) {
       lista.appendChild(elemento("p", "vazio", "Nenhum pedido na fila. 👌"));
-      return;
     }
-    comandas.forEach(function (comanda) {
+    dados.comandas.forEach(function (comanda) {
       var cartao = elemento("div", "pedido" + (comanda.tudo_pronto ? " tudo-pronto" : "") + (comanda.minutos >= 20 ? " atrasado" : ""));
       var topo = elemento("div", "pedido-topo");
       topo.appendChild(elemento("b", "", "Comanda " + comanda.numero + (comanda.mesa ? " · Mesa " + comanda.mesa : "")));
       topo.appendChild(elemento("span", "", comanda.minutos + " min"));
       cartao.appendChild(topo);
       comanda.itens.forEach(function (item) {
-        var botao = elemento("button", "item-cozinha estado-" + item.status);
-        botao.type = "button";
-        botao.dataset.id = item.id;
-        var linha = elemento("span", "item-nome", item.quantidade + "× " + item.nome);
-        botao.appendChild(linha);
-        if (item.observacao) botao.appendChild(elemento("span", "item-obs", "📝 " + item.observacao));
-        botao.appendChild(elemento("span", "item-meta", NOMES[item.status] + " · " + item.hora + (item.garcom ? " · " + item.garcom : "")));
-        cartao.appendChild(botao);
+        var bloco = elemento("div", "item-cozinha estado-" + item.status);
+        bloco.appendChild(elemento("span", "item-nome", item.quantidade + "× " + item.nome));
+        if (item.observacao) bloco.appendChild(elemento("span", "item-obs", "📝 " + item.observacao));
+        bloco.appendChild(elemento("span", "item-meta", "pedido às " + item.hora + (item.garcom ? " · " + item.garcom : "")));
+        bloco.appendChild(botoesDeSituacao(item));
+        cartao.appendChild(bloco);
       });
+      if (!comanda.tudo_pronto && comanda.itens.length > 1) {
+        var tudo = elemento("button", "tudo-pronto-botao", "✔ Tudo pronto");
+        tudo.type = "button";
+        tudo.dataset.comanda = comanda.comanda_id;
+        cartao.appendChild(tudo);
+      }
       lista.appendChild(cartao);
+    });
+
+    // Entregues há pouco: dá para trazer de volta se foi engano.
+    recentesLista.textContent = "";
+    recentes.hidden = !dados.recentes.length;
+    recentesTotal.textContent = dados.recentes.length;
+    dados.recentes.forEach(function (item) {
+      var linha = elemento("div", "recente");
+      linha.appendChild(elemento("span", "", item.quantidade + "× " + item.nome + " · comanda " + item.numero +
+        (item.mesa ? " · mesa " + item.mesa : "") + " · entregue às " + item.hora));
+      var voltar = elemento("button", "botao-estado estado-pronto", "Voltar para Pronto");
+      voltar.type = "button";
+      voltar.dataset.id = item.id;
+      voltar.dataset.status = "pronto";
+      voltar.dataset.anterior = "entregue";
+      voltar.dataset.nome = item.quantidade + "× " + item.nome;
+      linha.appendChild(voltar);
+      recentesLista.appendChild(linha);
     });
   }
 
   function atualizar() {
-    fetch(api, { credentials: "same-origin", headers: { Accept: "application/json" } })
+    return fetch(api, { credentials: "same-origin", headers: { Accept: "application/json" } })
       .then(function (resposta) {
         if (resposta.status === 401) { location.reload(); throw new Error("sessão expirada"); }
         if (!resposta.ok) throw new Error("HTTP " + resposta.status);
@@ -91,12 +145,12 @@
         dados.comandas.forEach(function (c) {
           c.itens.forEach(function (i) {
             ids[i.id] = true;
-            if (conhecidos && !conhecidos[i.id]) novo = true;
+            if (conhecidos && !conhecidos[i.id] && i.status === "pendente") novo = true;
           });
         });
         if (novo) apitar();
         conhecidos = ids;
-        desenhar(dados.comandas);
+        if (!ocupado) desenhar(dados);
         estado.textContent = "conectado";
         estado.className = "status online";
       })
@@ -106,42 +160,65 @@
       });
   }
 
-  function mudar(id, direcao) {
-    var corpoPedido = new URLSearchParams({ direcao: direcao });
-    fetch(api + "/itens/" + id, {
+  function enviar(url, corpoPedido) {
+    return fetch(url, {
       method: "POST",
       credentials: "same-origin",
       headers: { "X-CSRF-Token": csrf, "Content-Type": "application/x-www-form-urlencoded" },
-      body: corpoPedido,
-    }).then(atualizar, atualizar);
+      body: new URLSearchParams(corpoPedido || {}),
+    }).then(function (resposta) {
+      if (!resposta.ok) throw new Error("HTTP " + resposta.status);
+      return resposta;
+    });
   }
 
-  // Toque avança; toque longo (ou botão direito) volta um passo.
-  var segurando = null;
-  var voltou = false;
-  lista.addEventListener("pointerdown", function (evento) {
-    var botao = evento.target.closest(".item-cozinha");
-    if (!botao) return;
-    voltou = false;
-    segurando = setTimeout(function () {
-      if (!voltou) { voltou = true; mudar(botao.dataset.id, "voltar"); }
-    }, 700);
+  function mudar(id, status) {
+    return enviar(api + "/itens/" + id, { status: status });
+  }
+
+  function mostrarDesfazer(texto, mudanca) {
+    ultimaMudanca = mudanca;
+    avisoTexto.textContent = texto;
+    aviso.hidden = false;
+    clearTimeout(timerAviso);
+    timerAviso = setTimeout(function () { aviso.hidden = true; ultimaMudanca = null; }, 10000);
+  }
+
+  document.addEventListener("click", function (evento) {
+    var botao = evento.target.closest(".botao-estado");
+    if (botao) {
+      var id = botao.dataset.id;
+      var anterior = botao.dataset.anterior;
+      var status = botao.dataset.status;
+      if (status === anterior) return;
+      ocupado = true;
+      // Mostra na hora o que foi tocado; a confirmação do servidor vem logo em seguida.
+      botao.parentNode.querySelectorAll(".botao-estado").forEach(function (b) { b.classList.remove("ativo"); });
+      botao.classList.add("ativo");
+      mudar(id, status)
+        .then(function () {
+          mostrarDesfazer(botao.dataset.nome + " → " + NOMES[status], { id: id, status: anterior });
+        })
+        .catch(function () { alert("Não consegui salvar. Confira a conexão e tente de novo."); })
+        .then(function () { ocupado = false; return atualizar(); });
+      return;
+    }
+    var tudo = evento.target.closest(".tudo-pronto-botao");
+    if (tudo) {
+      tudo.disabled = true;
+      ocupado = true;
+      enviar(api + "/comandas/" + tudo.dataset.comanda + "/pronto")
+        .catch(function () { alert("Não consegui salvar. Confira a conexão e tente de novo."); })
+        .then(function () { ocupado = false; return atualizar(); });
+    }
   });
-  ["pointerup", "pointerleave", "pointercancel"].forEach(function (nome) {
-    lista.addEventListener(nome, function () { clearTimeout(segurando); });
-  });
-  lista.addEventListener("click", function (evento) {
-    var botao = evento.target.closest(".item-cozinha");
-    if (!botao || voltou) return;
-    botao.disabled = true;
-    mudar(botao.dataset.id, "avancar");
-  });
-  lista.addEventListener("contextmenu", function (evento) {
-    var botao = evento.target.closest(".item-cozinha");
-    if (!botao) return;
-    evento.preventDefault();
-    clearTimeout(segurando);
-    if (!voltou) { voltou = true; mudar(botao.dataset.id, "voltar"); }
+
+  botaoDesfazer.addEventListener("click", function () {
+    if (!ultimaMudanca) return;
+    var mudanca = ultimaMudanca;
+    ultimaMudanca = null;
+    aviso.hidden = true;
+    mudar(mudanca.id, mudanca.status).then(atualizar, atualizar);
   });
 
   atualizar();
