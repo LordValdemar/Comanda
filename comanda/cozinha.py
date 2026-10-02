@@ -1,17 +1,20 @@
 """Tela da cozinha: pedidos por ordem de chegada, atualizada sozinha a cada poucos segundos."""
 
+from datetime import timedelta
+
 from flask import Blueprint, abort, render_template, request
 
 from . import db
 from .auth import papel_exigido
 from .comandas import ErroComanda, mudar_status_item
-from .formatos import hora, minutos_desde
+from .formatos import agora_utc, hora, minutos_desde, para_texto_utc
 
 bp = Blueprint("cozinha", __name__)
 
-# Botão principal de cada etapa (a cozinha só avança; "voltar" desfaz um toque errado).
-PROXIMO = {"pendente": "preparando", "preparando": "pronto", "pronto": "entregue"}
-ANTERIOR = {"preparando": "pendente", "pronto": "preparando"}
+# A cozinha escolhe a situação direto (inclusive voltar uma etapa, se tocou errado).
+SITUACOES = ("pendente", "preparando", "pronto", "entregue")
+RECENTES_MINUTOS = 30  # itens entregues que ainda aparecem embaixo, para desfazer
+RECENTES_MAXIMO = 15
 
 
 def pedidos_da_cozinha(conexao):
@@ -49,6 +52,23 @@ def pedidos_da_cozinha(conexao):
     return resultado
 
 
+def entregues_recentes(conexao):
+    """Itens da cozinha entregues há pouco: se foi engano, a cozinha traz de volta."""
+    limite = para_texto_utc(agora_utc() - timedelta(minutes=RECENTES_MINUTOS))
+    linhas = conexao.execute(
+        "SELECT i.id, i.nome, i.quantidade, i.atualizado_em, c.numero, c.mesa FROM itens i "
+        "JOIN comandas c ON c.id = i.comanda_id "
+        "WHERE i.vai_cozinha = 1 AND i.status = 'entregue' AND i.atualizado_em >= ? AND c.status != 'cancelada' "
+        "ORDER BY i.atualizado_em DESC, i.id DESC LIMIT ?",
+        (limite, RECENTES_MAXIMO),
+    ).fetchall()
+    return [
+        {"id": linha["id"], "nome": linha["nome"], "quantidade": linha["quantidade"], "numero": linha["numero"],
+         "mesa": linha["mesa"] or "", "hora": hora(linha["atualizado_em"])}
+        for linha in linhas
+    ]
+
+
 @bp.route("/cozinha")
 @papel_exigido("cozinha", "caixa")
 def tela():
@@ -58,22 +78,36 @@ def tela():
 @bp.route("/api/cozinha")
 @papel_exigido("cozinha", "caixa")
 def api_pedidos():
-    return {"comandas": pedidos_da_cozinha(db.obter())}
+    conexao = db.obter()
+    return {"comandas": pedidos_da_cozinha(conexao), "recentes": entregues_recentes(conexao)}
 
 
 @bp.route("/api/cozinha/itens/<int:item_id>", methods=["POST"])
 @papel_exigido("cozinha", "caixa")
-def api_avancar(item_id):
+def api_mudar(item_id):
     conexao = db.obter()
     item = conexao.execute("SELECT * FROM itens WHERE id = ?", (item_id,)).fetchone()
     if item is None:
         abort(404)
-    direcao = request.form.get("direcao", "avancar")
-    novo = (PROXIMO if direcao == "avancar" else ANTERIOR).get(item["status"])
-    if novo is None:
-        return {"erro": "este item não pode mudar mais"}, 409
+    novo = request.form.get("status", "")
+    if novo not in SITUACOES:
+        return {"erro": "situação inválida"}, 400
     try:
         mudar_status_item(conexao, item, novo)
     except ErroComanda as erro:
         return {"erro": str(erro)}, 409
     return {"status": novo}
+
+
+@bp.route("/api/cozinha/comandas/<int:comanda_id>/pronto", methods=["POST"])
+@papel_exigido("cozinha", "caixa")
+def api_tudo_pronto(comanda_id):
+    """Marca como prontos todos os itens da comanda que ainda estão na cozinha."""
+    conexao = db.obter()
+    with conexao:
+        alterados = conexao.execute(
+            "UPDATE itens SET status = 'pronto', atualizado_em = ? "
+            "WHERE comanda_id = ? AND vai_cozinha = 1 AND status IN ('pendente', 'preparando')",
+            (para_texto_utc(agora_utc()), comanda_id),
+        ).rowcount
+    return {"alterados": alterados}

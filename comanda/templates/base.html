@@ -38,9 +38,12 @@
     {% endif %}
   </header>
   <main class="{% block classe_main %}{% endblock %}">
+    {# As atualizações automáticas (comanda.js) não "gastam" os avisos: eles ficam para a próxima página. #}
+    {% if not request.headers.get('X-Atualizacao') %}
     {% for categoria, mensagem in get_flashed_messages(with_categories=true) %}
       <div class="aviso {{ categoria }}">{{ mensagem }}</div>
     {% endfor %}
+    {% endif %}
     {% block conteudo %}{% endblock %}
   </main>
   <script src="{{ url_for('static', filename='comanda.js') }}"></script>

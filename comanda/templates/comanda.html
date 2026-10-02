@@ -8,7 +8,7 @@
         {% if comanda.status == 'fechada' %}<span class="selo">fechada</span>{% elif comanda.status == 'cancelada' %}<span class="selo fora">cancelada</span>{% endif %}</h2>
       <div class="dica">{% if comanda.mesa %}Mesa {{ comanda.mesa }} · {% endif %}{% if comanda.cliente %}{{ comanda.cliente }} · {% endif %}aberta às {{ comanda.aberta_em|hora }}</div>
     </div>
-    <div class="total-grande">{{ contas.subtotal|reais }}</div>
+    <div class="total-grande" id="regiao-total" data-atualizar>{{ contas.subtotal|reais }}</div>
   </div>
   <div class="acoes">
     <a class="botao secundario" href="{{ url_for('comandas.lista') }}">← Comandas</a>
@@ -64,11 +64,11 @@
 </section>
 {% endif %}
 
-<section>
+<section id="regiao-itens" data-atualizar>
   <h2>Itens</h2>
   {% if not itens %}<p class="dica">Nada lançado ainda.</p>{% endif %}
   {% for i in itens %}
-  <div class="linha-item {% if i.status == 'cancelado' %}apagado{% endif %}">
+  <div class="linha-item {% if i.status == 'cancelado' %}apagado{% endif %}" {% if i.status == 'pronto' %}data-pronto{% endif %}>
     <div>
       <b>{{ i.quantidade }}× {{ i.nome }}</b> <span class="dica">{{ (i.preco_centavos * i.quantidade)|reais }}</span>
       <span class="selo estado-{{ i.status }}">{{ status_item[i.status] }}</span>
@@ -81,6 +81,11 @@
       <form method="post" action="{{ url_for('comandas.alterar_item', comanda_id=comanda.id, item_id=i.id) }}">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <button type="submit" name="acao" value="entregue">Entregue</button>
+      </form>
+      {% elif i.status == 'entregue' and i.vai_cozinha %}
+      <form method="post" action="{{ url_for('comandas.alterar_item', comanda_id=comanda.id, item_id=i.id) }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button type="submit" name="acao" value="pronto" class="secundario" title="Tocou em Entregue sem querer? Volta para Pronto">↩ Não entregue</button>
       </form>
       {% endif %}
       {% if pode('caixa') or i.status == 'pendente' or not i.vai_cozinha %}

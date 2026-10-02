@@ -1,6 +1,5 @@
 {% extends "base.html" %}
 {% block titulo %}Comandas{% endblock %}
-{% block atributos_body %}data-recarregar="20"{% endblock %}
 {% block conteudo %}
 <section>
   <form method="get" class="linha">
@@ -20,11 +19,12 @@
   </details>
 </section>
 
+<div id="regiao-prontos" data-atualizar>
 {% if prontos %}
 <section class="destaque-pronto">
   <h2>🔔 Prontos para servir</h2>
   {% for i in prontos %}
-  <div class="linha-item">
+  <div class="linha-item" data-pronto>
     <div><b>{{ i.quantidade }}× {{ i.nome }}</b> → comanda <a href="{{ url_for('comandas.detalhe', comanda_id=i.comanda_id) }}">{{ i.numero }}</a>{% if i.mesa %} · mesa {{ i.mesa }}{% endif %}
       {% if i.observacao %}<div class="dica">{{ i.observacao }}</div>{% endif %}</div>
     <form method="post" action="{{ url_for('comandas.alterar_item', comanda_id=i.comanda_id, item_id=i.id) }}">
@@ -35,8 +35,9 @@
   {% endfor %}
 </section>
 {% endif %}
+</div>
 
-<section>
+<section id="regiao-abertas" data-atualizar>
   <h2>Abertas ({{ abertas|length }})</h2>
   {% if not abertas %}<p class="dica">Nenhuma comanda aberta.</p>{% endif %}
   <div class="grade-comandas">
