@@ -1,0 +1,20 @@
+/* Cupom no tamanho da impressora térmica de 80 mm (também serve na de 58 mm e em A4). */
+body { font-family: ui-monospace, "Courier New", monospace; font-size: 13px; color: #000; background: #eee; margin: 0; padding: 12px; }
+.cupom { width: 72mm; max-width: 100%; margin: 0 auto; background: #fff; padding: 4mm; }
+.centro { text-align: center; }
+.grande { font-size: 15px; }
+table { width: 100%; border-collapse: collapse; }
+td { padding: 1px 0; vertical-align: top; }
+.valor { text-align: right; white-space: nowrap; }
+.dica { color: #333; }
+.linha-tracejada { border-top: 1px dashed #000; margin: 6px 0; }
+.botoes, .historico { width: 72mm; max-width: 100%; margin: 0 auto 10px; display: flex; gap: 8px; flex-wrap: wrap; font-family: system-ui, sans-serif; }
+.historico { display: block; margin-top: 14px; font-size: 12px; }
+.botoes a, .botoes button, .historico button { padding: 8px 12px; border-radius: 6px; border: 0; background: #2f6fed; color: #fff; text-decoration: none; font: inherit; cursor: pointer; }
+.botoes a { background: #d8dce5; color: #1d2433; }
+@media print {
+  @page { margin: 0; size: 80mm auto; }
+  body { background: #fff; padding: 0; }
+  .cupom { width: 100%; padding: 2mm 3mm; }
+  .botoes, .historico { display: none; }
+}

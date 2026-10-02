@@ -1,0 +1,25 @@
+# Serviço systemd: inicia a Comanda junto com o computador e reinicia sozinha se travar.
+# Instalado por deploy/instalar-linux.sh.
+[Unit]
+Description=Comanda (comanda eletrônica)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=__USUARIO__
+WorkingDirectory=__PASTA__
+ExecStart=__PASTA__/.venv/bin/python __PASTA__/servidor.py
+Restart=always
+RestartSec=5
+Environment=PYTHONUNBUFFERED=1
+
+# Endurecimento: o serviço só pode escrever na pasta de dados.
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=__PASTA__/dados
+
+[Install]
+WantedBy=multi-user.target

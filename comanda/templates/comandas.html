@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block titulo %}Comandas{% endblock %}
+{% block atributos_body %}data-recarregar="20"{% endblock %}
+{% block conteudo %}
+<section>
+  <form method="get" class="linha">
+    <div><label>Buscar pelo número da comanda</label><input type="number" name="numero" min="1" max="99999" inputmode="numeric" value="{{ numero_buscado }}" {% if not numero_buscado %}autofocus{% endif %}></div>
+    <div class="fixo"><button type="submit">Buscar</button></div>
+  </form>
+  <details {% if numero_buscado %}open{% endif %}>
+    <summary>Abrir comanda nova</summary>
+    {% if numero_buscado %}<p class="dica">A comanda {{ numero_buscado }} não está aberta. Abra agora:</p>{% endif %}
+    <form method="post" class="linha">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div><label>Número</label><input type="number" name="numero" min="1" max="99999" required inputmode="numeric" value="{{ numero_buscado }}" {% if numero_buscado %}autofocus{% endif %}></div>
+      <div><label>Mesa</label><input type="text" name="mesa" maxlength="20" placeholder="opcional"></div>
+      <div><label>Cliente</label><input type="text" name="cliente" maxlength="60" placeholder="opcional"></div>
+      <div class="fixo"><button type="submit">Abrir</button></div>
+    </form>
+  </details>
+</section>
+
+{% if prontos %}
+<section class="destaque-pronto">
+  <h2>🔔 Prontos para servir</h2>
+  {% for i in prontos %}
+  <div class="linha-item">
+    <div><b>{{ i.quantidade }}× {{ i.nome }}</b> → comanda <a href="{{ url_for('comandas.detalhe', comanda_id=i.comanda_id) }}">{{ i.numero }}</a>{% if i.mesa %} · mesa {{ i.mesa }}{% endif %}
+      {% if i.observacao %}<div class="dica">{{ i.observacao }}</div>{% endif %}</div>
+    <form method="post" action="{{ url_for('comandas.alterar_item', comanda_id=i.comanda_id, item_id=i.id) }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="voltar" value="lista">
+      <button type="submit" name="acao" value="entregue">Entregue</button>
+    </form>
+  </div>
+  {% endfor %}
+</section>
+{% endif %}
+
+<section>
+  <h2>Abertas ({{ abertas|length }})</h2>
+  {% if not abertas %}<p class="dica">Nenhuma comanda aberta.</p>{% endif %}
+  <div class="grade-comandas">
+    {% for c in abertas %}
+    <a class="cartao-comanda {% if c.prontos %}tem-pronto{% endif %}" href="{{ url_for('comandas.detalhe', comanda_id=c.id) }}">
+      <span class="numero-comanda">{{ c.numero }}</span>
+      <span>{% if c.mesa %}Mesa {{ c.mesa }}{% endif %}{% if c.mesa and c.cliente %} · {% endif %}{{ c.cliente or '' }}</span>
+      <b>{{ c.consumo|reais }}</b>
+      <span class="dica">há {{ c.aberta_em|minutos }} min
+        {% if c.na_cozinha %} · 🍳 {{ c.na_cozinha }}{% endif %}{% if c.prontos %} · 🔔 {{ c.prontos }}{% endif %}</span>
+    </a>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}

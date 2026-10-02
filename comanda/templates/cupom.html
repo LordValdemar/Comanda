@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Comanda {{ comanda.numero }} · {{ estabelecimento }}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='cupom.css') }}">
+  <link rel="icon" href="data:,">
+</head>
+<body {% if request.args.get('imprimir') %}data-imprimir{% endif %}>
+  <div class="botoes">
+    <button type="button" id="imprimir">🖨️ Imprimir</button>
+    <a href="{{ url_for('comandas.lista') }}">Comandas</a>
+    {% if comanda.status == 'aberta' %}<a href="{{ url_for('comandas.detalhe', comanda_id=comanda.id) }}">Voltar à comanda</a>{% endif %}
+  </div>
+  <div class="cupom">
+    <div class="centro">
+      <b class="grande">{{ estabelecimento }}</b>
+      {% if endereco %}<div>{{ endereco }}</div>{% endif %}
+      <div class="linha-tracejada"></div>
+      <b>{{ 'CONFERÊNCIA DE CONTA' if comanda.status == 'aberta' else ('CANCELADA' if comanda.status == 'cancelada' else 'RECIBO') }}</b>
+      <div>Comanda {{ comanda.numero }}{% if comanda.mesa %} · Mesa {{ comanda.mesa }}{% endif %}</div>
+      {% if comanda.cliente %}<div>{{ comanda.cliente }}</div>{% endif %}
+      <div>{{ comanda.aberta_em|data_hora }}{% if comanda.fechada_em %} – {{ comanda.fechada_em|hora }}{% endif %}</div>
+    </div>
+    <div class="linha-tracejada"></div>
+    <table>
+      {% for i in itens %}
+      <tr><td colspan="2">{{ i.nome }}</td></tr>
+      <tr><td class="dica">{{ i.quantidade }} × {{ i.preco_centavos|reais }}</td><td class="valor">{{ (i.quantidade * i.preco_centavos)|reais }}</td></tr>
+      {% endfor %}
+    </table>
+    <div class="linha-tracejada"></div>
+    <table>
+      <tr><td>Consumo</td><td class="valor">{{ contas.subtotal|reais }}</td></tr>
+      {% if contas.taxa %}<tr><td>Serviço ({{ '%g'|format(comanda.taxa_percentual) }}%)</td><td class="valor">{{ contas.taxa|reais }}</td></tr>{% endif %}
+      {% if contas.desconto %}<tr><td>Desconto</td><td class="valor">− {{ contas.desconto|reais }}</td></tr>{% endif %}
+      <tr class="grande"><td><b>TOTAL</b></td><td class="valor"><b>{{ contas.total|reais }}</b></td></tr>
+    </table>
+    {% if pagamentos %}
+    <div class="linha-tracejada"></div>
+    <table>
+      {% for p in pagamentos %}
+      <tr><td>{{ formas[p.forma] }}</td><td class="valor">{{ p.recebido_centavos|reais }}</td></tr>
+      {% endfor %}
+      {% if contas.troco %}<tr><td>Troco</td><td class="valor">{{ contas.troco|reais }}</td></tr>{% endif %}
+    </table>
+    {% endif %}
+    <div class="linha-tracejada"></div>
+    <div class="centro">
+      {% if rodape %}<div>{{ rodape }}</div>{% endif %}
+      <div class="dica">Não é documento fiscal</div>
+    </div>
+  </div>
+
+  {% if auditoria %}
+  <div class="historico">
+    <h3>Histórico (não sai na impressão)</h3>
+    <ul>{% for a in auditoria %}<li>{{ a.quando|data_hora }} · {{ a.usuario or '?' }} · {{ a.acao }}{% if a.detalhe %}: {{ a.detalhe }}{% endif %}</li>{% endfor %}</ul>
+  </div>
+  {% endif %}
+  {% if pode('admin') and comanda.status == 'fechada' %}
+  <form method="post" action="{{ url_for('comandas.reabrir', comanda_id=comanda.id) }}" class="historico" data-confirmar="Reabrir a comanda {{ comanda.numero }}? O fechamento será desfeito.">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <button type="submit">Reabrir comanda</button>
+  </form>
+  {% endif %}
+  <script src="{{ url_for('static', filename='comanda.js') }}"></script>
+</body>
+</html>

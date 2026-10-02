@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block titulo %}Usuários{% endblock %}
+{% block conteudo %}
+<section>
+  <h2>Nova pessoa na equipe</h2>
+  <form method="post" class="linha">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div><label>Usuário</label><input type="text" name="usuario" required maxlength="40" autocapitalize="none"></div>
+    <div><label>Senha</label><input type="password" name="senha" required minlength="6" autocomplete="new-password"></div>
+    <div><label>Papel</label>
+      <select name="papel">{% for chave, nome in papeis.items() %}<option value="{{ chave }}" {% if chave == 'garcom' %}selected{% endif %}>{{ nome }}</option>{% endfor %}</select>
+    </div>
+    <div class="fixo"><button type="submit">Criar</button></div>
+  </form>
+  <p class="dica"><b>Garçom</b>: abre comandas e lança pedidos. <b>Cozinha</b>: só a tela da cozinha.
+    <b>Caixa</b>: tudo do garçom, mais fechar contas, cancelar e relatórios. <b>Administrador</b>: tudo, mais cardápio, equipe e ajustes.</p>
+</section>
+<section>
+  <h2>Equipe</h2>
+  <div class="tabela-rolagem"><table>
+    <tr><th>Usuário</th><th>Papel</th><th>Nova senha</th><th></th></tr>
+    {% for u in usuarios %}
+    <tr {% if not u.ativo %}class="apagado"{% endif %}>
+      <td>{{ u.usuario }}{% if u.id == g.usuario.id %} <span class="selo">você</span>{% endif %}{% if not u.ativo %} <span class="selo fora">desativado</span>{% endif %}</td>
+      <td>
+        <form method="post" action="{{ url_for('auth.alterar_usuario', usuario_id=u.id) }}" class="em-linha">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="acao" value="papel">
+          <select name="papel" data-enviar-ao-mudar>{% for chave, nome in papeis.items() %}<option value="{{ chave }}" {% if chave == u.papel %}selected{% endif %}>{{ nome }}</option>{% endfor %}</select>
+          <noscript><button type="submit" class="secundario">Salvar</button></noscript>
+        </form>
+      </td>
+      <td>
+        <form method="post" action="{{ url_for('auth.alterar_usuario', usuario_id=u.id) }}" class="em-linha">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="acao" value="senha">
+          <input type="password" name="senha" minlength="6" required placeholder="nova senha" autocomplete="new-password">
+          <button type="submit" class="secundario">Trocar</button>
+        </form>
+      </td>
+      <td>
+        <form method="post" action="{{ url_for('auth.alterar_usuario', usuario_id=u.id) }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="acao" value="ativo">
+          <button type="submit" class="secundario">{{ 'Desativar' if u.ativo else 'Reativar' }}</button>
+        </form>
+      </td>
+    </tr>
+    {% endfor %}
+  </table></div>
+  <p class="dica">Quem saiu da equipe deve ser <b>desativado</b> (não apagado): o histórico das comandas continua mostrando quem lançou cada item.</p>
+</section>
+{% endblock %}

@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#1d2433">
+  <title>{% block titulo %}{% endblock %} · {{ nome_estabelecimento }}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='comanda.css') }}">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22%3E%3Ctext y=%22.9em%22 font-size=%2290%22%3E🧾%3C/text%3E%3C/svg%3E">
+</head>
+<body class="{% block classe_body %}{% endblock %}" {% block atributos_body %}{% endblock %}>
+  <header>
+    <h1><a href="{{ url_for('auth.inicio') }}">🧾 {{ nome_estabelecimento }}</a></h1>
+    {% if g.usuario %}
+      <nav>
+        {% set ep = request.endpoint or '' %}
+        {% if pode('caixa', 'garcom') %}
+          <a href="{{ url_for('comandas.lista') }}" {% if ep.startswith('comandas.') and ep != 'comandas.historico' %}class="atual"{% endif %}>Comandas</a>
+        {% endif %}
+        {% if pode('cozinha', 'caixa') %}
+          <a href="{{ url_for('cozinha.tela') }}" {% if ep == 'cozinha.tela' %}class="atual"{% endif %}>Cozinha</a>
+        {% endif %}
+        {% if pode('caixa') %}
+          <a href="{{ url_for('comandas.historico') }}" {% if ep == 'comandas.historico' %}class="atual"{% endif %}>Fechadas</a>
+          <a href="{{ url_for('relatorios.vendas') }}" {% if ep == 'relatorios.vendas' %}class="atual"{% endif %}>Relatórios</a>
+        {% endif %}
+        {% if pode('admin') %}
+          <a href="{{ url_for('cardapio.lista') }}" {% if ep.startswith('cardapio.') %}class="atual"{% endif %}>Cardápio</a>
+          <a href="{{ url_for('auth.usuarios') }}" {% if ep == 'auth.usuarios' %}class="atual"{% endif %}>Usuários</a>
+          <a href="{{ url_for('ajustes.pagina') }}" {% if ep == 'ajustes.pagina' %}class="atual"{% endif %}>Ajustes</a>
+        {% endif %}
+        <a href="{{ url_for('auth.minha_senha') }}" {% if ep == 'auth.minha_senha' %}class="atual"{% endif %}>Senha</a>
+        <form action="{{ url_for('auth.sair') }}" method="post">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button type="submit">Sair ({{ g.usuario.usuario }})</button>
+        </form>
+      </nav>
+    {% endif %}
+  </header>
+  <main class="{% block classe_main %}{% endblock %}">
+    {% for categoria, mensagem in get_flashed_messages(with_categories=true) %}
+      <div class="aviso {{ categoria }}">{{ mensagem }}</div>
+    {% endfor %}
+    {% block conteudo %}{% endblock %}
+  </main>
+  <script src="{{ url_for('static', filename='comanda.js') }}"></script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

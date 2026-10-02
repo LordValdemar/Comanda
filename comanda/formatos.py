@@ -28,8 +28,8 @@ def ler_reais(texto, permitir_zero=True):
         if permitir_zero:
             return 0
         raise ValorInvalido("Informe um valor.")
-    if "," in texto:
-        texto = texto.replace(".", "").replace(",", ".")  # 1.234,56 (formato brasileiro)
+    if "," in texto or re.fullmatch(r"\d{1,3}(\.\d{3})+", texto):
+        texto = texto.replace(".", "").replace(",", ".")  # 1.234,56 ou 1.234 (formato brasileiro)
     if not re.fullmatch(r"\d{1,9}(\.\d{1,2})?", texto):
         raise ValorInvalido(f"Valor inválido: “{texto}”. Use o formato 12,50.")
     inteiro, _, fracao = texto.partition(".")

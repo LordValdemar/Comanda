@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block titulo %}Entrar{% endblock %}
+{% block classe_main %}estreito{% endblock %}
+{% block conteudo %}
+<section>
+  <h2>Entrar</h2>
+  <form method="post">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="campo"><label>Usuário</label><input type="text" name="usuario" required autofocus autocapitalize="none" autocomplete="username"></div>
+    <div class="campo"><label>Senha</label><input type="password" name="senha" required autocomplete="current-password"></div>
+    <button type="submit" class="largo">Entrar</button>
+  </form>
+</section>
+{% endblock %}
