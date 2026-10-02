@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block titulo %}Verificação em duas etapas{% endblock %}
+{% block classe_main %}estreito{% endblock %}
+{% block conteudo %}
+<section>
+  <h2>Verificação em duas etapas</h2>
+  <p class="dica">Abra o aplicativo autenticador no celular e digite o código de 6 dígitos.</p>
+  <form method="post">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="campo"><label for="codigo">Código</label>
+      <input type="text" id="codigo" name="codigo" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9 ]{6,7}" maxlength="7" required autofocus>
+    </div>
+    <button type="submit" class="largo">Confirmar</button>
+  </form>
+  <p class="dica">Perdeu o celular? Peça ao administrador para desativar a verificação do seu usuário.</p>
+</section>
+{% endblock %}

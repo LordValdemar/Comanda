@@ -49,10 +49,13 @@ fi
 chmod 600 "$PASTA/configuracao.env"
 PORTA="$(sed -n 's/^PORTA=\([0-9]*\).*/\1/p' "$PASTA/configuracao.env" | tail -1)"
 PORTA="${PORTA:-5001}"
+# Com o HTTPS ligado (deploy/ativar-https.sh), a Comanda só atende o próprio servidor.
+HTTPS_LIGADO=""
+grep -q '^HOST=127.0.0.1' "$PASTA/configuracao.env" && [ -f /etc/systemd/system/comanda-https.service ] && HTTPS_LIGADO=1
 
 # Firewall: se o ufw estiver ligado (o guia do Painel de Propagandas liga), libera a porta
 # da Comanda para a mesma rede que já acessa o painel na porta 5000.
-if command -v ufw >/dev/null && ufw status | grep -q "Status: active"; then
+if [ -z "$HTTPS_LIGADO" ] && command -v ufw >/dev/null && ufw status | grep -q "Status: active"; then
   ORIGEM="$(ufw status | awk '$1 ~ /^5000(\/tcp)?$/ && $2 == "ALLOW" {print $3; exit}')"
   if [ -n "$ORIGEM" ] && [ "$ORIGEM" != "Anywhere" ]; then
     echo "==> Firewall: liberando a porta $PORTA para $ORIGEM"
@@ -73,7 +76,12 @@ systemctl restart comanda
 IP="$(hostname -I 2>/dev/null | awk '{print $1}')"
 echo
 echo "Pronto! A Comanda inicia sozinha quando o computador ligar."
-echo "  Endereço:     http://${IP:-localhost}:$PORTA/   (abra no celular, no Wi-Fi do estabelecimento)"
+if [ -n "$HTTPS_LIGADO" ]; then
+  echo "  Endereço:     https://${IP:-localhost}:5443/   (HTTPS ligado)"
+else
+  echo "  Endereço:     http://${IP:-localhost}:$PORTA/   (abra no celular, no Wi-Fi do estabelecimento)"
+  echo "  Para ligar o HTTPS (cadeado): sudo ./deploy/ativar-https.sh"
+fi
 echo "  Configuração: $PASTA/configuracao.env (depois de editar: sudo systemctl restart comanda)"
 echo
 echo "Comandos úteis:"

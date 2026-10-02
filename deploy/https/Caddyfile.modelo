@@ -1,0 +1,32 @@
+# HTTPS da Comanda na rede local. Gerado por deploy/ativar-https.sh: não edite,
+# rode o script de novo (por exemplo, se o IP do servidor mudar).
+#
+# Este Caddy é só da Comanda: tem o próprio serviço (comanda-https) e não mexe
+# em outro Caddy que já exista no servidor (como o do Painel de Propagandas numa VPS).
+{
+	admin off
+	skip_install_trust
+	auto_https disable_redirects
+	storage file_system {
+		root __DADOS__/https
+	}
+}
+
+# A Comanda com cadeado. O certificado é emitido por uma autoridade criada
+# pelo próprio Caddy neste servidor (não precisa de domínio nem de internet).
+https://__IP__:__PORTA_HTTPS__, https://localhost:__PORTA_HTTPS__ {
+	tls internal
+	reverse_proxy 127.0.0.1:__PORTA__
+}
+
+# Sem cadeado, só a página para instalar o certificado nos aparelhos (e o visual dela).
+# O resto é levado para o endereço com HTTPS.
+http://:__PORTA_HTTP__ {
+	@certificado path /certificado /certificado.crt /static/*
+	handle @certificado {
+		reverse_proxy 127.0.0.1:__PORTA__
+	}
+	handle {
+		redir https://__IP__:__PORTA_HTTPS__{uri}
+	}
+}

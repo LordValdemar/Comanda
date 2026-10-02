@@ -103,6 +103,11 @@ MIGRACOES = [
         detalhe    TEXT
     );
     """,
+    # 2 - verificação em duas etapas (código do aplicativo autenticador)
+    """
+    ALTER TABLE usuarios ADD COLUMN totp_segredo TEXT;
+    ALTER TABLE usuarios ADD COLUMN totp_ultimo INTEGER NOT NULL DEFAULT 0;  -- impede reusar o mesmo código
+    """,
 ]
 
 

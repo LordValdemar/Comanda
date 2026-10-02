@@ -29,7 +29,7 @@
           <a href="{{ url_for('auth.usuarios') }}" {% if ep == 'auth.usuarios' %}class="atual"{% endif %}>Usuários</a>
           <a href="{{ url_for('ajustes.pagina') }}" {% if ep == 'ajustes.pagina' %}class="atual"{% endif %}>Ajustes</a>
         {% endif %}
-        <a href="{{ url_for('auth.minha_senha') }}" {% if ep == 'auth.minha_senha' %}class="atual"{% endif %}>Senha</a>
+        <a href="{{ url_for('auth.minha_conta') }}" {% if ep == 'auth.minha_conta' %}class="atual"{% endif %}>Minha conta</a>
         <form action="{{ url_for('auth.sair') }}" method="post">
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
           <button type="submit">Sair ({{ g.usuario.usuario }})</button>

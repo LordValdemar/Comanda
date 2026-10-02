@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block titulo %}Certificado de segurança{% endblock %}
+{% block classe_main %}medio{% endblock %}
+{% block conteudo %}
+<section>
+  <h2>🔒 Instalar o certificado neste aparelho</h2>
+  {% if not disponivel %}
+    <p>O HTTPS não está ligado neste servidor. O administrador liga com <code>sudo ./deploy/ativar-https.sh</code> (veja o guia de instalação).</p>
+  {% else %}
+    <p>A Comanda usa um certificado criado pelo próprio servidor. Ele protege as senhas e os dados que passam pelo Wi-Fi.
+      Instale-o <b>uma vez em cada aparelho</b> (celulares, tablet da cozinha, computador do caixa). Sem ele, o navegador mostra o aviso
+      “sua conexão não é particular”.</p>
+    <p><a class="botao" href="{{ url_for('certificado.baixar') }}">Baixar o certificado</a></p>
+
+    <h3>Android</h3>
+    <ol class="passos">
+      <li>Toque em <b>Baixar o certificado</b>.</li>
+      <li>Abra <b>Configurações → Segurança</b> (ou “Segurança e privacidade”) <b>→ Mais configurações → Criptografia e credenciais → Instalar um certificado → Certificado CA</b>.</li>
+      <li>Toque em <b>Instalar mesmo assim</b>, confirme com o bloqueio de tela do celular e escolha o arquivo <code>comanda-certificado.crt</code> em Downloads.</li>
+    </ol>
+    <p class="dica">O caminho muda um pouco de marca para marca. Se não achar, procure por “certificado” na busca das Configurações.</p>
+
+    <h3>iPhone / iPad</h3>
+    <ol class="passos">
+      <li>Abra esta página no <b>Safari</b> e toque em <b>Baixar o certificado</b> → <b>Permitir</b>.</li>
+      <li>Abra <b>Ajustes → Perfil Transferido</b> (logo no topo) → <b>Instalar</b>.</li>
+      <li>Depois, em <b>Ajustes → Geral → Sobre → Ajustes de Confiança de Certificados</b>, ligue a chave do certificado <b>Caddy Local Authority</b>.</li>
+    </ol>
+
+    <h3>Windows (computador do caixa)</h3>
+    <ol class="passos">
+      <li>Baixe o certificado e dê dois cliques no arquivo → <b>Instalar Certificado</b>.</li>
+      <li>Escolha <b>Máquina Local</b> → <b>Colocar todos os certificados no repositório a seguir</b> → <b>Autoridades de Certificação Raiz Confiáveis</b> → Concluir.</li>
+      <li>Feche e abra o navegador de novo.</li>
+    </ol>
+
+    <p>Pronto: abra a Comanda pelo endereço com <b>https://</b>. O cadeado aparece sem aviso.</p>
+    <p class="dica">O certificado não dá acesso a nada no aparelho. Mas o aparelho passa a confiar neste servidor para conexões seguras:
+      por isso a chave do certificado fica protegida no servidor (pasta <code>dados/https</code>, só o dono lê) e o servidor deve
+      ficar bem guardado. Se um aparelho sair da equipe, remova o certificado dele nas mesmas configurações em que foi instalado.</p>
+  {% endif %}
+</section>
+{% endblock %}

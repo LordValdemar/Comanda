@@ -10,5 +10,6 @@
     <div class="campo"><label>Senha</label><input type="password" name="senha" required autocomplete="current-password"></div>
     <button type="submit" class="largo">Entrar</button>
   </form>
+  {% if config.ATRAS_DE_PROXY %}<p class="dica">Aviso de segurança no navegador? <a href="{{ url_for('certificado.instrucoes') }}">Instale o certificado</a>.</p>{% endif %}
 </section>
 {% endblock %}

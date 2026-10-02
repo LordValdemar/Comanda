@@ -21,7 +21,7 @@
     <tr><th>Usuário</th><th>Papel</th><th>Nova senha</th><th></th></tr>
     {% for u in usuarios %}
     <tr {% if not u.ativo %}class="apagado"{% endif %}>
-      <td>{{ u.usuario }}{% if u.id == g.usuario.id %} <span class="selo">você</span>{% endif %}{% if not u.ativo %} <span class="selo fora">desativado</span>{% endif %}</td>
+      <td>{{ u.usuario }}{% if u.id == g.usuario.id %} <span class="selo">você</span>{% endif %}{% if not u.ativo %} <span class="selo fora">desativado</span>{% endif %}{% if u.totp_segredo %} <span class="selo estado-pronto" title="Verificação em duas etapas ativada">🔒 2 etapas</span>{% endif %}</td>
       <td>
         <form method="post" action="{{ url_for('auth.alterar_usuario', usuario_id=u.id) }}" class="em-linha">
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="acao" value="papel">
@@ -36,11 +36,17 @@
           <button type="submit" class="secundario">Trocar</button>
         </form>
       </td>
-      <td>
+      <td class="acoes-tabela">
         <form method="post" action="{{ url_for('auth.alterar_usuario', usuario_id=u.id) }}">
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="acao" value="ativo">
           <button type="submit" class="secundario">{{ 'Desativar' if u.ativo else 'Reativar' }}</button>
         </form>
+        {% if u.totp_segredo and u.id != g.usuario.id %}
+        <form method="post" action="{{ url_for('auth.alterar_usuario', usuario_id=u.id) }}" data-confirmar="Desativar a verificação em duas etapas de “{{ u.usuario }}”? Use quando a pessoa perdeu o celular.">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="acao" value="desativar_2fa">
+          <button type="submit" class="secundario">Tirar 2 etapas</button>
+        </form>
+        {% endif %}
       </td>
     </tr>
     {% endfor %}

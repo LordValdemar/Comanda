@@ -128,3 +128,10 @@ form.finalizar { margin-top: 16px; }
   .linha > .fixo { flex-basis: auto !important; }
   .linha-item { flex-wrap: wrap; }
 }
+
+/* Verificação em duas etapas */
+.passos { padding-left: 20px; line-height: 1.6; }
+.qr-2fa { display: flex; gap: 20px; align-items: flex-start; flex-wrap: wrap; }
+.qr-2fa img { background: #fff; border: 1px solid #e6e9f0; border-radius: 8px; }
+.qr-2fa > div { flex: 1; min-width: 240px; }
+.chave { font-family: ui-monospace, monospace; font-size: .9rem; background: #f2f4f7; padding: 6px 8px; border-radius: 6px; word-break: break-all; }
