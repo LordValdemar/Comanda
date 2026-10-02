@@ -30,6 +30,7 @@ Usa a mesma base do **Painel de Propagandas** (Python + Flask + Waitress + SQLit
 
 - **Histórico de quem fez o quê**: cancelamentos, descontos, pagamentos removidos e reaberturas.
 - **Backup automático diário**, mais o botão "fazer backup agora" em Ajustes.
+- **Segurança**: verificação em duas etapas (código do aplicativo autenticador), **HTTPS na rede local** com o comando `sudo ./deploy/ativar-https.sh`, senhas guardadas de forma que não dá para ler, bloqueio depois de 5 senhas erradas e proteção contra os ataques comuns em sites.
 
 ## Instalação no servidor Linux (o mesmo do painel)
 
@@ -43,6 +44,8 @@ sudo ./deploy/instalar-linux.sh
 ```
 
 Depois, abra `http://IP-DO-SERVIDOR:5001` e crie o administrador.
+
+Para ligar o HTTPS (cadeado): `sudo ./deploy/ativar-https.sh`. A Comanda passa para `https://IP-DO-SERVIDOR:5443`, e cada aparelho instala o certificado uma vez, pela página `http://IP-DO-SERVIDOR:5080/certificado`. Detalhes na seção 5 do guia.
 
 ## Desenvolvimento
 
@@ -60,6 +63,7 @@ python3 -m venv .venv
 .venv/bin/python gerenciar.py listar-usuarios
 .venv/bin/python gerenciar.py criar-usuario maria --papel caixa
 .venv/bin/python gerenciar.py trocar-senha admin       # esqueceu a senha
+.venv/bin/python gerenciar.py desativar-2fa admin      # perdeu o celular da verificação em duas etapas
 .venv/bin/python gerenciar.py backup
 sudo systemctl stop comanda && .venv/bin/python gerenciar.py restaurar dados/backups/backup-....zip && sudo systemctl start comanda
 ```
@@ -72,5 +76,6 @@ sudo systemctl stop comanda && .venv/bin/python gerenciar.py restaurar dados/bac
 | `FUSO_HORARIO` | `America/Sao_Paulo` | horários dos pedidos e dos relatórios |
 | `BACKUP_MANTER` | `14` | quantos backups diários guardar (`0` desliga) |
 | `PASTA_DADOS` | `./dados` | onde ficam o banco, os backups e os logs |
+| `HOST`, `ATRAS_DE_PROXY`, `COOKIE_SEGURO` | — | ajustados sozinhos pelo `ativar-https.sh`; não mexa |
 
 O nome do estabelecimento, o endereço no cupom e a taxa de serviço são ajustados pelo próprio sistema, no menu **Ajustes**.

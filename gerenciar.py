@@ -4,6 +4,7 @@ Ferramentas de administração pela linha de comando.
     python gerenciar.py listar-usuarios
     python gerenciar.py criar-usuario NOME [--papel admin|caixa|garcom|cozinha]
     python gerenciar.py trocar-senha NOME          # esqueceu a senha
+    python gerenciar.py desativar-2fa NOME         # perdeu o celular da verificação em duas etapas
     python gerenciar.py backup
     python gerenciar.py restaurar CAMINHO_DO_BACKUP.zip   # pare o serviço antes
 """
@@ -13,7 +14,7 @@ import getpass
 import sys
 
 from comanda import arquivo_config, create_app, db
-from comanda.auth import PAPEIS, ErroUsuario, criar_usuario, trocar_senha
+from comanda.auth import PAPEIS, ErroUsuario, criar_usuario, desativar_2fa, trocar_senha
 from comanda.backup import criar_backup, restaurar_backup
 
 
@@ -33,6 +34,8 @@ def main(argumentos=None):
     criar.add_argument("--papel", choices=sorted(PAPEIS), default="admin")
     trocar = comandos.add_parser("trocar-senha", help="redefine a senha (e reativa o usuário)")
     trocar.add_argument("usuario")
+    dois_fatores = comandos.add_parser("desativar-2fa", help="desativa a verificação em duas etapas de um usuário")
+    dois_fatores.add_argument("usuario")
     comandos.add_parser("backup", help="faz um backup agora")
     restaurar = comandos.add_parser("restaurar", help="volta um backup (pare o serviço antes)")
     restaurar.add_argument("arquivo")
@@ -52,10 +55,14 @@ def main(argumentos=None):
             except ErroUsuario as erro:
                 sys.exit(str(erro))
             print(f"Usuário “{args.usuario}” criado ({PAPEIS[args.papel]}).")
-        elif args.comando == "trocar-senha":
+        elif args.comando in ("trocar-senha", "desativar-2fa"):
             linha = conexao.execute("SELECT id FROM usuarios WHERE usuario = ?", (args.usuario,)).fetchone()
             if linha is None:
                 sys.exit(f"Usuário “{args.usuario}” não encontrado.")
+            if args.comando == "desativar-2fa":
+                desativar_2fa(conexao, linha["id"])
+                print(f"Verificação em duas etapas de “{args.usuario}” desativada.")
+                return
             try:
                 trocar_senha(conexao, linha["id"], pedir_senha())
             except ErroUsuario as erro:

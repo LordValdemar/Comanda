@@ -14,6 +14,17 @@
   </form>
 </section>
 <section>
+  <h2>Segurança</h2>
+  {% if https_ligado %}
+    <p>🔒 O HTTPS está ligado. Para não aparecer aviso no navegador, instale o certificado em cada aparelho:
+      <a href="{{ url_for('certificado.instrucoes') }}">como instalar</a>.</p>
+  {% else %}
+    <p>⚠️ O HTTPS está desligado: as senhas passam sem criptografia pelo Wi-Fi. Use um Wi-Fi só da equipe ou ligue o HTTPS
+      (<code>sudo ./deploy/ativar-https.sh</code>, veja o guia de instalação).</p>
+  {% endif %}
+  <p>Recomendado: ativar a <a href="{{ url_for('auth.minha_conta') }}">verificação em duas etapas</a> no administrador e no caixa.</p>
+</section>
+<section>
   <h2>Backup</h2>
   <p>O sistema faz um backup automático por dia em <code>dados/backups</code>. Guarde uma cópia fora do servidor de vez em quando (pendrive, nuvem).</p>
   <form method="post" action="{{ url_for('ajustes.fazer_backup') }}">

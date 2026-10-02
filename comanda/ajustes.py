@@ -6,6 +6,7 @@ from flask import Blueprint, current_app, flash, redirect, render_template, requ
 
 from . import backup, db
 from .auth import papel_exigido
+from .certificado import caminho_certificado
 from .comandas import taxa_padrao
 
 bp = Blueprint("ajustes", __name__, url_prefix="/ajustes")
@@ -37,6 +38,7 @@ def pagina():
         rodape_cupom=db.ler_config("rodape_cupom", "Obrigado pela preferência!"),
         taxa_servico=f"{taxa_padrao():g}".replace(".", ","),
         backups=backups,
+        https_ligado=caminho_certificado() is not None,
     )
 
 

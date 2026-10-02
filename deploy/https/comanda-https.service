@@ -1,0 +1,25 @@
+# HTTPS da Comanda na rede local (Caddy). Instalado por deploy/ativar-https.sh.
+[Unit]
+Description=Comanda - HTTPS na rede local (Caddy)
+After=network-online.target comanda.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=__USUARIO__
+ExecStart=/usr/bin/caddy run --config __PASTA__/dados/https/Caddyfile --adapter caddyfile
+Restart=always
+RestartSec=5
+# O Caddy guarda a autoridade e os certificados aqui (vão junto no backup da pasta dados).
+Environment=HOME=__PASTA__/dados/https
+Environment=XDG_DATA_HOME=__PASTA__/dados/https
+Environment=XDG_CONFIG_HOME=__PASTA__/dados/https
+
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=__PASTA__/dados/https
+
+[Install]
+WantedBy=multi-user.target

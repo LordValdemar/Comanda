@@ -18,7 +18,7 @@ from logging.handlers import TimedRotatingFileHandler
 from flask import Flask, request
 from werkzeug.middleware.proxy_fix import ProxyFix
 
-from . import ajustes, auth, cardapio, comandas, cozinha, db, formatos, relatorios
+from . import ajustes, auth, cardapio, certificado, comandas, cozinha, db, formatos, relatorios
 
 PASTA_PROJETO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -105,7 +105,7 @@ def create_app(sobrescrever=None):
     app.teardown_appcontext(db.fechar)
 
     auth.registrar(app)
-    for modulo in (cardapio, comandas, cozinha, relatorios, ajustes):
+    for modulo in (cardapio, comandas, cozinha, relatorios, ajustes, certificado):
         app.register_blueprint(modulo.bp)
 
     app.jinja_env.filters["reais"] = formatos.reais
