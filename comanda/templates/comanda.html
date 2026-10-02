@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+{% block titulo %}Comanda {{ comanda.numero }}{% endblock %}
+{% block conteudo %}
+<section>
+  <div class="cabecalho-comanda">
+    <div>
+      <h2>Comanda {{ comanda.numero }}
+        {% if comanda.status == 'fechada' %}<span class="selo">fechada</span>{% elif comanda.status == 'cancelada' %}<span class="selo fora">cancelada</span>{% endif %}</h2>
+      <div class="dica">{% if comanda.mesa %}Mesa {{ comanda.mesa }} · {% endif %}{% if comanda.cliente %}{{ comanda.cliente }} · {% endif %}aberta às {{ comanda.aberta_em|hora }}</div>
+    </div>
+    <div class="total-grande">{{ contas.subtotal|reais }}</div>
+  </div>
+  <div class="acoes">
+    <a class="botao secundario" href="{{ url_for('comandas.lista') }}">← Comandas</a>
+    <a class="botao secundario" href="{{ url_for('comandas.cupom', comanda_id=comanda.id) }}">Conferência</a>
+    {% if pode('caixa') and comanda.status == 'aberta' %}<a class="botao" href="{{ url_for('comandas.fechamento', comanda_id=comanda.id) }}">Fechar conta</a>{% endif %}
+  </div>
+  {% if comanda.status == 'aberta' %}
+  <details>
+    <summary>Mesa e cliente</summary>
+    <form method="post" action="{{ url_for('comandas.alterar_dados', comanda_id=comanda.id) }}" class="linha">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div><label>Mesa</label><input type="text" name="mesa" maxlength="20" value="{{ comanda.mesa or '' }}"></div>
+      <div><label>Cliente</label><input type="text" name="cliente" maxlength="60" value="{{ comanda.cliente or '' }}"></div>
+      <div class="fixo"><button type="submit" class="secundario">Salvar</button></div>
+    </form>
+  </details>
+  {% endif %}
+</section>
+
+{% if comanda.status == 'aberta' %}
+<section>
+  <h2>Lançar pedido</h2>
+  <form method="post" action="{{ url_for('comandas.lancar_itens', comanda_id=comanda.id) }}" id="form-pedido">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="linha">
+      <div style="flex-basis:90px"><label>Código</label><input type="text" name="codigo" maxlength="10" inputmode="numeric" placeholder="atalho"></div>
+      <div style="flex-basis:70px"><label>Qtd.</label><input type="number" name="codigo_qtd" min="1" max="999" value="1"></div>
+      <div style="flex-basis:200px"><label>Observação</label><input type="text" name="codigo_obs" maxlength="120" placeholder="ex.: sem cebola"></div>
+    </div>
+    <div class="campo"><input type="search" id="filtro-produtos" placeholder="🔎 Procurar no cardápio..." autocomplete="off"></div>
+    {% if not grupos %}<p class="dica">O cardápio está vazio. {% if pode('admin') %}<a href="{{ url_for('cardapio.lista') }}">Cadastre os produtos</a>.{% endif %}</p>{% endif %}
+    {% for categoria, grupo in grupos %}
+    <div class="categoria-produtos">
+      <h3>{{ categoria }}</h3>
+      {% for p in grupo %}
+      <div class="produto-lancar" data-nome="{{ p.nome|lower }} {{ p.codigo or '' }}">
+        <div class="produto-info">
+          <span>{{ p.nome }}{% if p.codigo %} <span class="dica">#{{ p.codigo }}</span>{% endif %}</span>
+          <span class="dica">{{ p.preco_centavos|reais }}</span>
+        </div>
+        <div class="quantidade">
+          <button type="button" class="secundario menos" aria-label="menos">−</button>
+          <input type="number" name="qtd_{{ p.id }}" min="0" max="999" value="0" inputmode="numeric" aria-label="quantidade de {{ p.nome }}">
+          <button type="button" class="secundario mais" aria-label="mais">+</button>
+        </div>
+        <input type="text" name="obs_{{ p.id }}" maxlength="120" placeholder="observação" class="obs">
+      </div>
+      {% endfor %}
+    </div>
+    {% endfor %}
+    <div class="barra-enviar"><button type="submit" class="largo" id="enviar-pedido">Enviar pedido</button></div>
+  </form>
+</section>
+{% endif %}
+
+<section>
+  <h2>Itens</h2>
+  {% if not itens %}<p class="dica">Nada lançado ainda.</p>{% endif %}
+  {% for i in itens %}
+  <div class="linha-item {% if i.status == 'cancelado' %}apagado{% endif %}">
+    <div>
+      <b>{{ i.quantidade }}× {{ i.nome }}</b> <span class="dica">{{ (i.preco_centavos * i.quantidade)|reais }}</span>
+      <span class="selo estado-{{ i.status }}">{{ status_item[i.status] }}</span>
+      {% if i.observacao %}<div class="dica">📝 {{ i.observacao }}</div>{% endif %}
+      <div class="dica">{{ i.lancado_em|hora }}{% if i.garcom %} · {{ i.garcom }}{% endif %}{% if i.motivo_cancelamento %} · cancelado: {{ i.motivo_cancelamento }}{% endif %}</div>
+    </div>
+    {% if comanda.status == 'aberta' and i.status != 'cancelado' %}
+    <div class="acoes">
+      {% if i.status == 'pronto' %}
+      <form method="post" action="{{ url_for('comandas.alterar_item', comanda_id=comanda.id, item_id=i.id) }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button type="submit" name="acao" value="entregue">Entregue</button>
+      </form>
+      {% endif %}
+      {% if pode('caixa') or i.status == 'pendente' or not i.vai_cozinha %}
+      <form method="post" action="{{ url_for('comandas.alterar_item', comanda_id=comanda.id, item_id=i.id) }}" data-pedir-motivo="Motivo do cancelamento de “{{ i.nome }}”:">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="motivo" value="">
+        <button type="submit" name="acao" value="cancelar" class="secundario">Cancelar</button>
+      </form>
+      {% endif %}
+    </div>
+    {% endif %}
+  </div>
+  {% endfor %}
+</section>
+
+{% if pode('caixa') and comanda.status == 'aberta' %}
+<section>
+  <details>
+    <summary>Cancelar a comanda inteira</summary>
+    <form method="post" action="{{ url_for('comandas.cancelar', comanda_id=comanda.id) }}" class="linha" data-confirmar="Cancelar a comanda {{ comanda.numero }} e todos os itens?">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div><label>Motivo</label><input type="text" name="motivo" required maxlength="120"></div>
+      <div class="fixo"><button type="submit" class="perigo">Cancelar comanda</button></div>
+    </form>
+  </details>
+</section>
+{% endif %}
+{% endblock %}

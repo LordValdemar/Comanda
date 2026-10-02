@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block titulo %}Primeiro acesso{% endblock %}
+{% block classe_main %}estreito{% endblock %}
+{% block conteudo %}
+<section>
+  <h2>Bem-vindo! Crie o administrador</h2>
+  <p class="dica">Este usuário cadastra o cardápio e a equipe. Depois, cada pessoa entra com o seu.</p>
+  <form method="post">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="campo"><label>Nome do estabelecimento (sai no cupom)</label><input type="text" name="estabelecimento" maxlength="80" autofocus></div>
+    <div class="campo"><label>Usuário</label><input type="text" name="usuario" required maxlength="40" autocapitalize="none"></div>
+    <div class="campo"><label>Senha</label><input type="password" name="senha" required minlength="6" autocomplete="new-password"></div>
+    <div class="campo"><label>Repita a senha</label><input type="password" name="confirmacao" required minlength="6" autocomplete="new-password"></div>
+    <button type="submit" class="largo">Começar</button>
+  </form>
+</section>
+{% endblock %}

@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block titulo %}Cozinha{% endblock %}
+{% block classe_body %}tela-cozinha{% endblock %}
+{% block classe_main %}largo{% endblock %}
+{% block atributos_body %}data-csrf="{{ csrf_token() }}" data-api="{{ url_for('cozinha.api_pedidos') }}"{% endblock %}
+{% block conteudo %}
+<div class="barra-cozinha">
+  <span id="estado-conexao" class="status">conectando...</span>
+  <span class="dica">Toque no item para avançar: aguardando → preparando → pronto. Segure (ou clique com o botão direito) para voltar um passo.</span>
+  <button type="button" id="som" class="secundario">🔕 Ligar som</button>
+</div>
+<div id="pedidos" class="pedidos"><p class="dica">Carregando...</p></div>
+{% endblock %}
+{% block scripts %}<script src="{{ url_for('static', filename='cozinha.js') }}"></script>{% endblock %}

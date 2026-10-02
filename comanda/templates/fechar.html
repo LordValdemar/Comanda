@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% block titulo %}Fechar comanda {{ comanda.numero }}{% endblock %}
+{% block classe_main %}medio{% endblock %}
+{% block conteudo %}
+<section>
+  <h2>Fechar comanda {{ comanda.numero }}{% if comanda.mesa %} · mesa {{ comanda.mesa }}{% endif %}</h2>
+  {% if na_cozinha %}<div class="aviso alerta">Há {{ na_cozinha }} item(ns) ainda não entregue(s).</div>{% endif %}
+  <table class="contas">
+    <tr><td>Consumo</td><td class="numero">{{ contas.subtotal|reais }}</td></tr>
+    <tr><td>Taxa de serviço ({{ '%g'|format(comanda.taxa_percentual) }}%)</td><td class="numero">{{ contas.taxa|reais }}</td></tr>
+    {% if contas.desconto %}<tr><td>Desconto</td><td class="numero">− {{ contas.desconto|reais }}</td></tr>{% endif %}
+    <tr class="total"><td>Total</td><td class="numero">{{ contas.total|reais }}</td></tr>
+    <tr><td>Pago</td><td class="numero">{{ contas.pago|reais }}</td></tr>
+    <tr class="{{ 'falta' if contas.restante > 0 else 'ok' }}"><td>{{ 'Falta' if contas.restante >= 0 else 'Passou' }}</td><td class="numero">{{ contas.restante|abs|reais }}</td></tr>
+    {% if contas.troco %}<tr><td>Troco</td><td class="numero">{{ contas.troco|reais }}</td></tr>{% endif %}
+  </table>
+
+  {% if comanda.status == 'aberta' %}
+  <details {% if contas.desconto or not comanda.cobrar_taxa %}open{% endif %}>
+    <summary>Taxa de serviço e desconto</summary>
+    <form method="post" class="linha">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="fixo"><label class="marcar"><input type="checkbox" name="cobrar_taxa" {% if comanda.cobrar_taxa %}checked{% endif %}> Cobrar taxa de serviço</label></div>
+      <div><label>Desconto (R$)</label><input type="text" name="desconto" inputmode="decimal" value="{{ entrada_reais(comanda.desconto_centavos) }}"></div>
+      <div class="fixo"><button type="submit" name="acao" value="ajustar" class="secundario">Aplicar</button></div>
+    </form>
+  </details>
+  {% endif %}
+</section>
+
+{% if comanda.status == 'aberta' %}
+<section>
+  <h2>Receber</h2>
+  {% if contas.restante > 0 %}
+  <form method="post" class="linha">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div><label>Forma</label>
+      <select name="forma">{% for chave, nome in formas.items() %}<option value="{{ chave }}">{{ nome }}</option>{% endfor %}</select>
+    </div>
+    <div><label>Valor (R$) <span class="dica">em dinheiro, digite o que o cliente entregou</span></label>
+      <input type="text" name="valor" required inputmode="decimal" value="{{ entrada_reais(contas.restante) }}"></div>
+    <div class="fixo"><button type="submit" name="acao" value="pagar">Registrar</button></div>
+  </form>
+  <p class="dica">Para dividir a conta, registre um pagamento para cada pessoa.</p>
+  {% endif %}
+  {% for p in pagamentos %}
+  <div class="linha-item">
+    <div>{{ formas[p.forma] }}: <b>{{ p.valor_centavos|reais }}</b>
+      {% if p.recebido_centavos > p.valor_centavos %}<span class="dica">(recebido {{ p.recebido_centavos|reais }}, troco {{ (p.recebido_centavos - p.valor_centavos)|reais }})</span>{% endif %}</div>
+    <form method="post">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="pagamento_id" value="{{ p.id }}">
+      <button type="submit" name="acao" value="remover_pagamento" class="secundario">Remover</button>
+    </form>
+  </div>
+  {% endfor %}
+  <form method="post" class="finalizar">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <button type="submit" name="acao" value="finalizar" class="largo" {% if contas.restante != 0 %}disabled{% endif %}>Finalizar e imprimir</button>
+  </form>
+</section>
+{% else %}
+<section><p>Esta comanda já está {{ comanda.status }}. <a href="{{ url_for('comandas.cupom', comanda_id=comanda.id) }}">Ver cupom</a></p></section>
+{% endif %}
+<p><a href="{{ url_for('comandas.detalhe', comanda_id=comanda.id) }}">← Voltar à comanda</a></p>
+{% endblock %}

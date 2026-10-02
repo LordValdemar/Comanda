@@ -1,0 +1,4 @@
+Flask>=3.0,<4
+waitress>=3.0,<4
+# Banco de fusos horários (o Windows não traz um)
+tzdata; sys_platform == "win32"

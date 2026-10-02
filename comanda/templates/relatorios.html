@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block titulo %}Relatórios{% endblock %}
+{% block conteudo %}
+<section>
+  <form method="get" class="linha">
+    <div><label>De</label><input type="date" name="de" value="{{ inicio.isoformat() }}"></div>
+    <div><label>Até</label><input type="date" name="ate" value="{{ fim.isoformat() }}"></div>
+    <div class="fixo"><button type="submit">Ver</button></div>
+    <div class="fixo"><a class="botao secundario" href="{{ url_for('relatorios.exportar', de=inicio.isoformat(), ate=fim.isoformat()) }}">Baixar planilha (CSV)</a></div>
+  </form>
+  {% if dados.abertas %}<p class="dica">Há {{ dados.abertas }} comanda(s) ainda aberta(s): elas entram no relatório quando forem fechadas.</p>{% endif %}
+</section>
+
+<div class="cartoes">
+  <div class="cartao"><div class="rotulo">Faturamento</div><div class="valor">{{ dados.faturamento|reais }}</div></div>
+  <div class="cartao"><div class="rotulo">Comandas fechadas</div><div class="valor">{{ dados.comandas }}</div></div>
+  <div class="cartao"><div class="rotulo">Ticket médio</div><div class="valor">{{ dados.ticket_medio|reais }}</div></div>
+  <div class="cartao"><div class="rotulo">Taxa de serviço</div><div class="valor">{{ dados.taxa|reais }}</div></div>
+  <div class="cartao"><div class="rotulo">Descontos</div><div class="valor">{{ dados.descontos|reais }}</div></div>
+</div>
+
+<section>
+  <h2>Por forma de pagamento</h2>
+  {% if not dados.formas %}<p class="dica">Nenhum pagamento no período.</p>{% endif %}
+  <table>
+    {% for f in dados.formas %}<tr><td>{{ formas.get(f.forma, f.forma) }}</td><td class="numero">{{ f.quantidade }}×</td><td class="numero">{{ f.valor|reais }}</td></tr>{% endfor %}
+  </table>
+</section>
+
+<section>
+  <h2>Produtos vendidos</h2>
+  {% if not dados.produtos %}<p class="dica">Nenhuma venda no período.</p>{% endif %}
+  <div class="tabela-rolagem"><table>
+    <tr><th>Produto</th><th class="numero">Qtd.</th><th class="numero">Valor</th></tr>
+    {% for p in dados.produtos %}<tr><td>{{ p.nome }}</td><td class="numero">{{ p.quantidade }}</td><td class="numero">{{ p.valor|reais }}</td></tr>{% endfor %}
+  </table></div>
+</section>
+
+<section>
+  <h2>Vendas por garçom</h2>
+  <table>
+    {% for g_ in dados.garcons %}<tr><td>{{ g_.garcom }}</td><td class="numero">{{ g_.valor|reais }}</td></tr>{% endfor %}
+  </table>
+  <p class="dica">Consumo lançado por cada pessoa, sem taxa de serviço nem descontos.</p>
+</section>
+
+<section>
+  <h2>Itens cancelados ({{ dados.cancelados|length }})</h2>
+  {% if dados.cancelados %}
+  <div class="tabela-rolagem"><table>
+    <tr><th>Quando</th><th>Comanda</th><th>Item</th><th>Por</th><th>Motivo</th></tr>
+    {% for i in dados.cancelados %}
+    <tr><td>{{ i.atualizado_em|data_hora }}</td><td><a href="{{ url_for('comandas.cupom', comanda_id=i.comanda_id) }}">{{ i.numero }}</a></td>
+      <td>{{ i.quantidade }}× {{ i.nome }}</td><td>{{ i.cancelado_por_nome or '' }}</td><td>{{ i.motivo_cancelamento or '' }}</td></tr>
+    {% endfor %}
+  </table></div>
+  {% endif %}
+</section>
+{% endblock %}

@@ -1,0 +1,130 @@
+* { box-sizing: border-box; }
+body { font-family: system-ui, sans-serif; margin: 0; background: #f2f4f7; color: #1d2433; }
+header { background: #1d2433; color: #fff; padding: 12px 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; }
+header h1 { margin: 0; font-size: 1.15rem; }
+header h1 a { color: inherit; text-decoration: none; }
+nav { display: flex; gap: 4px; align-items: center; flex-wrap: wrap; }
+nav a, nav button { color: #cfd6e4; text-decoration: none; padding: 8px 10px; border-radius: 6px; background: none; border: 0; font: inherit; cursor: pointer; }
+nav a:hover, nav button:hover, nav a.atual { background: #2c3550; color: #fff; }
+nav form { margin: 0; }
+main { max-width: 1000px; margin: 0 auto; padding: 20px 16px; }
+main.estreito { max-width: 420px; padding-top: 50px; }
+main.medio { max-width: 720px; }
+main.largo { max-width: none; }
+section { background: #fff; border-radius: 10px; padding: 18px; margin-bottom: 18px; box-shadow: 0 1px 3px rgba(0,0,0,.08); }
+h2 { margin-top: 0; font-size: 1.1rem; }
+h3 { font-size: 1rem; margin: 18px 0 6px; color: #4a5368; }
+label { font-size: .85rem; color: #555; display: block; margin-bottom: 4px; }
+label.marcar { display: inline-flex; gap: 6px; align-items: center; color: #1d2433; font-size: .95rem; padding: 9px 0; }
+input[type=text], input[type=password], input[type=number], input[type=date], input[type=search], select {
+  padding: 10px; border: 1px solid #ccd; border-radius: 6px; width: 100%; font: inherit; background: #fff;
+}
+button, .botao { display: inline-block; text-decoration: none; white-space: nowrap; padding: 10px 16px; border: 0; border-radius: 6px; background: #2f6fed; color: #fff; cursor: pointer; font: inherit; }
+button:disabled { opacity: .45; cursor: default; }
+button.secundario, .botao.secundario { background: #e3e7ef; color: #1d2433; }
+button.perigo { background: #d93b3b; }
+button.largo { width: 100%; padding: 14px; font-size: 1.05rem; }
+.campo { margin-bottom: 14px; }
+.linha { display: flex; gap: 10px; align-items: end; flex-wrap: wrap; margin-bottom: 8px; }
+.linha > div { flex: 1 1 140px; min-width: 0; }
+.linha > .fixo { flex: 0 0 auto; }
+.em-linha { display: flex; gap: 6px; align-items: center; margin: 0; }
+.em-linha input { min-width: 0; }
+.acoes { display: flex; gap: 6px; margin-top: 10px; flex-wrap: wrap; }
+.acoes form, td form { margin: 0; }
+.acoes-tabela { display: flex; gap: 6px; justify-content: flex-end; }
+.selo { font-size: .75rem; padding: 2px 8px; border-radius: 10px; background: #e3e7ef; white-space: nowrap; }
+.selo.fora { background: #fde2e2; color: #9b1c1c; }
+.estado-pendente { background: #fff1d6; color: #8a5300; }
+.estado-preparando { background: #dce8ff; color: #1d4fb8; }
+.estado-pronto { background: #d6f5df; color: #17682f; }
+.dica { color: #6b7385; font-size: .88rem; }
+.aviso { padding: 10px 14px; border-radius: 8px; margin-bottom: 14px; }
+.aviso.ok { background: #d6f5df; color: #17682f; }
+.aviso.erro { background: #fde2e2; color: #9b1c1c; }
+.aviso.alerta { background: #fff1d6; color: #8a5300; }
+.apagado { opacity: .55; }
+.apagado b { text-decoration: line-through; }
+table { width: 100%; border-collapse: collapse; }
+th, td { text-align: left; padding: 9px 6px; border-bottom: 1px solid #eee; vertical-align: middle; }
+.numero { text-align: right; font-variant-numeric: tabular-nums; }
+.tabela-rolagem { overflow-x: auto; }
+details { margin-top: 12px; border: 1px solid #e6e9f0; border-radius: 8px; padding: 8px 12px; }
+details summary { cursor: pointer; color: #2f6fed; }
+details[open] summary { margin-bottom: 10px; }
+code { background: #f2f4f7; padding: 1px 5px; border-radius: 4px; }
+
+/* Cardápio (admin) */
+details.produto summary { display: flex; justify-content: space-between; gap: 10px; color: #1d2433; }
+details.produto summary > span { flex: 1; }
+
+/* Lista de comandas */
+.grade-comandas { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+.cartao-comanda { display: flex; flex-direction: column; gap: 3px; padding: 12px; border-radius: 10px; background: #f6f8fb; border: 2px solid #e3e7ef; color: inherit; text-decoration: none; min-height: 110px; }
+.cartao-comanda:hover { border-color: #2f6fed; }
+.cartao-comanda.tem-pronto { border-color: #22a447; background: #effbf2; }
+.numero-comanda { font-size: 1.8rem; font-weight: 700; line-height: 1; }
+.destaque-pronto { border-left: 5px solid #22a447; }
+.linha-item { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 10px 0; border-top: 1px solid #eee; }
+.linha-item:first-of-type { border-top: 0; }
+.linha-item .acoes { margin: 0; }
+
+/* Comanda: cabeçalho e lançamento */
+.cabecalho-comanda { display: flex; justify-content: space-between; align-items: start; gap: 10px; }
+.cabecalho-comanda h2 { margin-bottom: 4px; }
+.total-grande { font-size: 1.5rem; font-weight: 700; white-space: nowrap; }
+.produto-lancar { display: grid; grid-template-columns: 1fr auto; gap: 6px 10px; align-items: center; padding: 8px 0; border-top: 1px solid #f0f1f4; }
+.produto-lancar.escolhido { background: #eef4ff; margin: 0 -8px; padding: 8px; border-radius: 8px; }
+.produto-info { display: flex; flex-direction: column; }
+.quantidade { display: flex; align-items: center; gap: 4px; }
+.quantidade button { width: 42px; height: 42px; padding: 0; font-size: 1.3rem; }
+.quantidade input { width: 54px; text-align: center; padding: 8px 4px; }
+.produto-lancar .obs { grid-column: 1 / -1; display: none; }
+.produto-lancar.escolhido .obs { display: block; }
+.barra-enviar { position: sticky; bottom: 0; background: #fff; padding: 10px 0 2px; margin-top: 10px; }
+
+/* Fechamento */
+table.contas td { font-size: 1.05rem; }
+table.contas tr.total td { font-weight: 700; font-size: 1.25rem; }
+table.contas tr.falta td { color: #9b1c1c; font-weight: 600; }
+table.contas tr.ok td { color: #17682f; font-weight: 600; }
+form.finalizar { margin-top: 16px; }
+
+/* Relatórios */
+.cartoes { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 18px; }
+.cartao { background: #fff; border-radius: 10px; padding: 14px; box-shadow: 0 1px 3px rgba(0,0,0,.08); }
+.cartao .valor { font-size: 1.4rem; font-weight: 600; }
+.cartao .rotulo { color: #666; font-size: .85rem; }
+
+/* Cozinha: letras grandes, para ler de longe */
+.tela-cozinha { background: #1a1f2b; }
+.tela-cozinha main { padding: 14px; }
+.barra-cozinha { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; color: #cfd6e4; margin-bottom: 12px; }
+.barra-cozinha .dica { color: #8f98ab; flex: 1; }
+.status { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; }
+.status::before { content: ""; width: 10px; height: 10px; border-radius: 50%; background: #aab; }
+.status.online::before { background: #22a447; }
+.status.offline { color: #ff8a8a; }
+.status.offline::before { background: #d93b3b; }
+.pedidos { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; align-items: start; }
+.pedido { background: #fff; border-radius: 10px; padding: 10px; border-top: 6px solid #f0a020; }
+.pedido.atrasado { border-top-color: #d93b3b; }
+.pedido.tudo-pronto { border-top-color: #22a447; opacity: .8; }
+.pedido-topo { display: flex; justify-content: space-between; font-size: 1.15rem; margin-bottom: 8px; }
+.item-cozinha { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; width: 100%; text-align: left; white-space: normal; margin-top: 6px; padding: 10px 12px; border-radius: 8px; user-select: none; -webkit-touch-callout: none; }
+.item-nome { font-size: 1.25rem; font-weight: 700; }
+.item-obs { font-size: 1.05rem; font-weight: 600; }
+.item-meta { font-size: .85rem; opacity: .8; }
+.item-cozinha.estado-pendente { background: #fff1d6; color: #5c3700; }
+.item-cozinha.estado-preparando { background: #dce8ff; color: #123a8a; }
+.item-cozinha.estado-pronto { background: #d6f5df; color: #0f4d22; }
+.vazio { color: #8f98ab; font-size: 1.3rem; text-align: center; grid-column: 1 / -1; padding: 40px; }
+
+@media (max-width: 600px) {
+  header { padding: 10px 12px; }
+  main { padding: 14px 10px; }
+  section { padding: 14px; }
+  .linha > div { flex-basis: 100% !important; }
+  .linha > .fixo { flex-basis: auto !important; }
+  .linha-item { flex-wrap: wrap; }
+}

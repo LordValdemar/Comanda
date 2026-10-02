@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block titulo %}Ajustes{% endblock %}
+{% block classe_main %}medio{% endblock %}
+{% block conteudo %}
+<section>
+  <h2>Estabelecimento</h2>
+  <form method="post">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="campo"><label>Nome (aparece no topo e no cupom)</label><input type="text" name="nome_estabelecimento" maxlength="80" value="{{ nome_estabelecimento }}"></div>
+    <div class="campo"><label>Endereço / telefone (no cupom)</label><input type="text" name="endereco" maxlength="160" value="{{ endereco }}"></div>
+    <div class="campo"><label>Mensagem no fim do cupom</label><input type="text" name="rodape_cupom" maxlength="160" value="{{ rodape_cupom }}"></div>
+    <div class="campo"><label>Taxa de serviço (%)</label><input type="text" name="taxa_servico" inputmode="decimal" value="{{ taxa_servico }}" style="max-width:120px"></div>
+    <button type="submit">Salvar</button>
+  </form>
+</section>
+<section>
+  <h2>Backup</h2>
+  <p>O sistema faz um backup automático por dia em <code>dados/backups</code>. Guarde uma cópia fora do servidor de vez em quando (pendrive, nuvem).</p>
+  <form method="post" action="{{ url_for('ajustes.fazer_backup') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <button type="submit" class="secundario">Fazer backup agora e baixar</button>
+  </form>
+  {% if backups %}<p class="dica">Backups no servidor: {{ backups|join(', ') }}</p>{% endif %}
+</section>
+{% endblock %}

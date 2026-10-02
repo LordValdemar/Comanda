@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block titulo %}Trocar senha{% endblock %}
+{% block classe_main %}estreito{% endblock %}
+{% block conteudo %}
+<section>
+  <h2>Trocar minha senha</h2>
+  <form method="post">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="campo"><label>Senha atual</label><input type="password" name="atual" required autocomplete="current-password"></div>
+    <div class="campo"><label>Senha nova</label><input type="password" name="nova" required minlength="6" autocomplete="new-password"></div>
+    <div class="campo"><label>Repita a senha nova</label><input type="password" name="confirmacao" required minlength="6" autocomplete="new-password"></div>
+    <button type="submit" class="largo">Trocar senha</button>
+  </form>
+  <p class="dica">Ao trocar, os outros aparelhos em que você entrou saem sozinhos.</p>
+</section>
+{% endblock %}
