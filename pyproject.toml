@@ -1,0 +1,19 @@
+[project]
+name = "comanda"
+version = "1.0.0"
+description = "Comanda eletrônica local para bares, restaurantes e lanchonetes"
+requires-python = ">=3.10"
+
+[tool.ruff]
+line-length = 130
+target-version = "py310"
+
+[tool.ruff.lint]
+# Regras fixas: o resultado não muda quando sai uma versão nova do ruff.
+select = ["E4", "E7", "E9", "F", "W", "I", "B"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["comanda", "conftest"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
