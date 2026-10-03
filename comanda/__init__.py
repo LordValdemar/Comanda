@@ -49,6 +49,8 @@ def montar_config(sobrescrever=None):
         "SESSION_COOKIE_NAME": "comanda_sessao",
         "PERMANENT_SESSION_LIFETIME": 30 * 24 * 3600,  # 30 dias: a equipe não precisa entrar todo dia
         "ATRAS_DE_PROXY": _env_ligado("ATRAS_DE_PROXY"),
+        # Endereço principal com HTTPS (colocado pelo deploy/ativar-https.sh), para mostrar na tela.
+        "ENDERECO_COMANDA": os.environ.get("ENDERECO_COMANDA", ""),
     }
     config.update(sobrescrever)
     return config

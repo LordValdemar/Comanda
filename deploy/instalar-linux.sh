@@ -77,7 +77,8 @@ IP="$(hostname -I 2>/dev/null | awk '{print $1}')"
 echo
 echo "Pronto! A Comanda inicia sozinha quando o computador ligar."
 if [ -n "$HTTPS_LIGADO" ]; then
-  echo "  Endereço:     https://${IP:-localhost}:5443/   (HTTPS ligado)"
+  ENDERECO="$(sed -n 's/^ENDERECO_COMANDA=//p' "$PASTA/configuracao.env" | tail -1)"
+  echo "  Endereço:     ${ENDERECO:-https://${IP:-localhost}:5443}/   (HTTPS ligado)"
 else
   echo "  Endereço:     http://${IP:-localhost}:$PORTA/   (abra no celular, no Wi-Fi do estabelecimento)"
   echo "  Para ligar o HTTPS (cadeado): sudo ./deploy/ativar-https.sh"

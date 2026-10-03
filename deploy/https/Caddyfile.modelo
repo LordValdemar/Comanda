@@ -20,13 +20,13 @@ https://__IP__:__PORTA_HTTPS__, https://localhost:__PORTA_HTTPS__ {
 }
 
 # Sem cadeado, só a página para instalar o certificado nos aparelhos (e o visual dela).
-# O resto é levado para o endereço com HTTPS.
+# O resto é levado para o endereço principal da Comanda (com HTTPS).
 http://:__PORTA_HTTP__ {
 	@certificado path /certificado /certificado.crt /static/*
 	handle @certificado {
 		reverse_proxy 127.0.0.1:__PORTA__
 	}
 	handle {
-		redir https://__IP__:__PORTA_HTTPS__{uri}
+		redir __ENDERECO__{uri}
 	}
 }

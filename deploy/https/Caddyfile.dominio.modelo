@@ -1,0 +1,12 @@
+
+# A Comanda pelo domínio próprio, com certificado do Let's Encrypt, que todo aparelho já
+# reconhece (não precisa instalar nada). O nome aponta para o IP interno do servidor: ninguém
+# de fora acessa. O certificado é pedido e renovado provando a posse do domínio pelo DNS da
+# Cloudflare (a chave fica em /etc/comanda/cloudflare.env, só o administrador do servidor lê).
+https://__DOMINIO__:__PORTA_DOMINIO__ {
+	tls {
+		dns cloudflare {env.CLOUDFLARE_API_TOKEN}
+		resolvers 1.1.1.1 1.0.0.1
+	}
+	reverse_proxy 127.0.0.1:__PORTA__
+}

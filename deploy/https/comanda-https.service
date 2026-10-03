@@ -7,13 +7,17 @@ Wants=network-online.target
 [Service]
 Type=simple
 User=__USUARIO__
-ExecStart=/usr/bin/caddy run --config __PASTA__/dados/https/Caddyfile --adapter caddyfile
+ExecStart=__CADDY__ run --config __PASTA__/dados/https/Caddyfile --adapter caddyfile
 Restart=always
 RestartSec=5
-# O Caddy guarda a autoridade e os certificados aqui (vão junto no backup da pasta dados).
+# O Caddy guarda a autoridade local e os certificados em dados/https.
 Environment=HOME=__PASTA__/dados/https
 Environment=XDG_DATA_HOME=__PASTA__/dados/https
 Environment=XDG_CONFIG_HOME=__PASTA__/dados/https
+# Chave da Cloudflare (só com domínio próprio). O systemd lê o arquivo antes de trocar de usuário.
+EnvironmentFile=-/etc/comanda/cloudflare.env
+# Permite usar a porta 443 (endereço sem número) sem rodar como administrador.
+AmbientCapabilities=CAP_NET_BIND_SERVICE
 
 NoNewPrivileges=true
 PrivateTmp=true

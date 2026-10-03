@@ -68,21 +68,71 @@ No fim, ele mostra o endereço, por exemplo `http://192.168.0.10:5001/`.
 
 ### 5.1. Ligue o HTTPS (cadeado)
 
-Sem o HTTPS, as senhas passam pelo Wi-Fi sem criptografia. Para ligar:
+Sem o HTTPS, as senhas passam pelo Wi-Fi sem criptografia. Há dois jeitos de ligar:
+
+| | Com domínio próprio (recomendado) | Sem domínio |
+|---|---|---|
+| Endereço | `https://comanda.sualoja.com.br` | `https://192.168.0.10:5443` |
+| Nos aparelhos | **nada para instalar** | instalar o certificado em cada um |
+| Precisa de | um domínio (ex.: `.com.br`) na Cloudflare (gratuita) | nada |
+
+Nos dois jeitos, a Comanda **continua só na rede local**: ninguém de fora acessa. O endereço antigo (`:5001`) deixa de funcionar na rede, e o Painel de Propagandas não muda.
+
+#### Com domínio próprio (recomendado)
+
+O nome (ex.: `comanda.comercialgustavo.com.br`) aponta para o IP interno do servidor, e o certificado vem do **Let's Encrypt**, que todo celular e computador já reconhece. O servidor precisa de internet para pedir o certificado e renová-lo sozinho. Se a internet cair, a Comanda continua funcionando.
+
+**1. Coloque o domínio na Cloudflare** (só na primeira vez)
+
+1. Crie uma conta gratuita em [cloudflare.com](https://dash.cloudflare.com/sign-up).
+2. Clique em **Adicionar um domínio** (ou "Add a site"), digite o domínio (ex.: `comercialgustavo.com.br`) e escolha o plano **Free**.
+3. A Cloudflare copia os registros que o domínio já tem. **Se o domínio já tem site ou e-mail funcionando**, confira se eles aparecem na lista antes de continuar: um registro faltando faz o site ou o e-mail parar.
+4. No fim, a Cloudflare mostra **dois servidores DNS** (algo como `ana.ns.cloudflare.com` e `bob.ns.cloudflare.com`).
+5. No [registro.br](https://registro.br), entre na sua conta, abra o domínio → **DNS** → **Alterar servidores DNS**, troque pelos dois da Cloudflare e salve.
+6. Espere a Cloudflare mostrar o domínio como **Ativo**. Ela avisa por e-mail; costuma levar de minutos a algumas horas.
+
+> **Não** crie projetos em "Workers e Pages" na Cloudflare para a Comanda: ela roda no seu servidor. A Cloudflare só cuida do nome (DNS).
+
+**2. Crie a chave (token) da Cloudflare**
+
+1. Na Cloudflare, clique no seu perfil (canto superior direito) → **Perfil** → **Tokens de API** → **Criar token**.
+2. Escolha o modelo **Editar DNS da zona** ("Edit zone DNS") → **Usar modelo**.
+3. Em **Permissões**, deixe `Zona` · `DNS` · `Editar` e clique em **+ Adicionar mais** para incluir `Zona` · `Zona` · `Ler`.
+4. Em **Recursos da zona**, escolha `Incluir` · `Zona específica` · o seu domínio.
+5. **Continuar para resumo** → **Criar token** → **copie a chave**. Ela só aparece uma vez.
+
+**3. Ligue o HTTPS no servidor**
+
+```bash
+cd ~/comanda
+sudo ./deploy/ativar-https.sh --dominio comanda.comercialgustavo.com.br
+```
+
+Troque pelo seu domínio. O `comanda.` na frente pode ser outro nome, se preferir. O script pede a chave: cole com o botão direito do mouse (ela não aparece na tela) e aperte Enter. Depois ele:
+
+- cria na Cloudflare o nome apontando para o IP do servidor;
+- baixa o Caddy com o módulo da Cloudflare e pede o certificado do Let's Encrypt;
+- ajusta o firewall e confere se o cadeado está funcionando.
+
+No fim, mostra o endereço: **`https://comanda.comercialgustavo.com.br`**. Abra nos aparelhos: o cadeado aparece **sem instalar nada**. Se tinha posto o ícone na tela inicial, apague-o e crie de novo pelo endereço novo.
+
+O endereço `https://IP-DO-SERVIDOR:5443` continua funcionando como **reserva** (com o certificado do próprio servidor), caso o nome não abra.
+
+> A chave da Cloudflare fica guardada em `/etc/comanda/cloudflare.env`, que só o administrador do servidor lê. Ela só permite mexer no DNS do seu domínio. Se precisar trocá-la: `sudo ./deploy/ativar-https.sh --novo-token`.
+
+#### Sem domínio
 
 ```bash
 cd ~/comanda
 sudo ./deploy/ativar-https.sh
 ```
 
-O script instala o **Caddy** e cria um certificado próprio do servidor, sem precisar de domínio nem de internet. Ele também ajusta o firewall. No fim, mostra os dois endereços novos:
+O script instala o **Caddy** e cria um certificado próprio do servidor, sem precisar de domínio nem de internet. No fim, mostra os dois endereços novos:
 
 | Endereço | Para quê |
 |---|---|
 | `https://192.168.0.10:5443` | a Comanda, agora com cadeado. Use este daqui em diante. |
 | `http://192.168.0.10:5080/certificado` | página para instalar o certificado nos aparelhos |
-
-O endereço antigo (`:5001`) deixa de funcionar na rede: a Comanda só atende pelo HTTPS. O Painel de Propagandas não muda.
 
 **Em cada aparelho** (celulares, tablet da cozinha, computador do caixa), uma vez só:
 
@@ -93,14 +143,16 @@ O endereço antigo (`:5001`) deixa de funcionar na rede: a Comanda só atende pe
 
 > O certificado não dá acesso a nada no aparelho, mas o aparelho passa a confiar neste servidor. Por isso, mantenha o servidor protegido (senha forte, chave SSH). Quando um aparelho sair da equipe, remova o certificado dele.
 
-Outros casos:
+#### Outros casos
 
 ```bash
-sudo ./deploy/ativar-https.sh 192.168.0.20   # o IP do servidor mudou: rode de novo com o IP novo
+sudo ./deploy/ativar-https.sh 192.168.0.20   # o IP do servidor mudou: rode de novo com o IP novo (com domínio, o DNS é atualizado sozinho)
+sudo ./deploy/ativar-https.sh --novo-token   # trocar a chave da Cloudflare
+sudo ./deploy/ativar-https.sh --sem-dominio  # deixar de usar o domínio (fica só o https://IP:5443)
 sudo ./deploy/ativar-https.sh --desfazer     # voltar para http://IP:5001 (sem cadeado)
 ```
 
-Se desligar e ligar de novo, o certificado é o mesmo: os aparelhos não precisam instalar outra vez.
+Rodar o script de novo sem nada mantém o que já estava configurado (o domínio, se houver). Se desligar e ligar de novo, o certificado do servidor é o mesmo: os aparelhos não precisam instalar outra vez.
 
 ### 5.2. Ative a verificação em duas etapas
 
@@ -177,6 +229,8 @@ Os dados (`dados/`), o `configuracao.env` e o HTTPS (se estiver ligado) são man
 |---|---|
 | Aviso “sua conexão não é particular” | O certificado não foi instalado nesse aparelho: abra `http://IP-DO-SERVIDOR:5080/certificado`. No iPhone, falta ligar a chave em **Ajustes → Geral → Sobre → Ajustes de Confiança de Certificados**. |
 | O código das 2 etapas não é aceito | Confira se a hora do celular está em automático. Se perdeu o celular, veja a seção 5.2. |
+| Com domínio: “não foi possível encontrar o endereço” | Alguns roteadores bloqueiam nomes que apontam para IP interno (“proteção contra DNS rebinding”). No roteador, desligue essa proteção ou troque o DNS entregue aos aparelhos para `1.1.1.1` e `8.8.8.8`. Enquanto isso, use o endereço de reserva `https://IP-DO-SERVIDOR:5443`. |
+| Com domínio: o script diz que o certificado não saiu | Veja o motivo com `journalctl -u comanda-https -n 50 --no-pager \| grep -i error`. Os mais comuns: o domínio ainda não está **Ativo** na Cloudflare (espere e rode o script de novo), a chave sem a permissão `Zona · Zona · Ler` (crie outra e use `--novo-token`) ou o servidor sem internet. |
 | Com HTTPS, não abre de jeito nenhum | Rode `systemctl status comanda-https` e `sudo ufw status` (as portas 5443 e 5080 têm de estar liberadas). Se o IP do servidor mudou, rode `sudo ./deploy/ativar-https.sh NOVO-IP`. |
 | O celular não abre o endereço | Confira se ele está no **mesmo Wi-Fi** do servidor. Rode `sudo ufw status` e veja se a porta 5001 aparece liberada. Se não: `sudo ufw allow from 192.168.0.0/24 to any port 5001 proto tcp` (ajuste a rede). |
 | "Address already in use" nos logs | Outra coisa está usando a porta 5001. Mude `PORTA=` no `configuracao.env`, rode `sudo systemctl restart comanda` e libere a porta nova no firewall. |

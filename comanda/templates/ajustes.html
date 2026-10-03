@@ -15,7 +15,14 @@
 </section>
 <section>
   <h2>Segurança</h2>
-  {% if https_ligado %}
+  {% if config.ENDERECO_COMANDA %}
+    <p>🔒 O HTTPS está ligado. Endereço da Comanda: <a href="{{ config.ENDERECO_COMANDA }}/"><b>{{ config.ENDERECO_COMANDA }}</b></a></p>
+    {% if '://' in config.ENDERECO_COMANDA and config.ENDERECO_COMANDA.split('://')[1].split(':')[0].replace('.', '').isdigit() %}
+      <p>Para não aparecer aviso no navegador, instale o certificado em cada aparelho:
+        <a href="{{ url_for('certificado.instrucoes') }}">como instalar</a>. Com um domínio próprio, não precisa instalar nada
+        (<code>sudo ./deploy/ativar-https.sh --dominio comanda.sualoja.com.br</code>, veja o guia).</p>
+    {% endif %}
+  {% elif https_ligado %}
     <p>🔒 O HTTPS está ligado. Para não aparecer aviso no navegador, instale o certificado em cada aparelho:
       <a href="{{ url_for('certificado.instrucoes') }}">como instalar</a>.</p>
   {% else %}

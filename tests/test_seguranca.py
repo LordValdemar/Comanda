@@ -125,3 +125,18 @@ def test_migracao_de_banco_antigo(tmp_path):
     with app.app_context():
         linha = db.obter().execute("SELECT usuario, totp_segredo, totp_ultimo FROM usuarios").fetchone()
     assert tuple(linha) == ("velho", None, 0)
+
+
+def test_endereco_https_em_ajustes(tmp_path, monkeypatch):
+    monkeypatch.setenv("ENDERECO_COMANDA", "https://comanda.comercialgustavo.com.br")
+    monkeypatch.setenv("ATRAS_DE_PROXY", "1")
+    app = create_app({"PASTA_DADOS": str(tmp_path / "dados"), "TESTING": True, "SECRET_KEY": "teste"})
+    cliente = app.test_client()
+    configurar_admin(cliente)
+    html = cliente.get("/ajustes/").get_data(as_text=True)
+    assert "https://comanda.comercialgustavo.com.br" in html
+    assert "como instalar" not in html  # com domínio, não precisa instalar certificado
+    cliente.post("/sair", data={"csrf_token": csrf(cliente)})
+    # Pelo domínio, o login não fala de certificado; pelo IP (reserva), fala.
+    assert "Instale o certificado" not in cliente.get("/login", base_url="https://comanda.comercialgustavo.com.br").get_data(as_text=True)
+    assert "Instale o certificado" in cliente.get("/login", base_url="https://192.168.3.119:5443").get_data(as_text=True)
