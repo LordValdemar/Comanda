@@ -50,13 +50,14 @@ def test_login_com_duas_etapas(cliente, app):
     # Só a senha não basta: as páginas continuam fechadas.
     assert cliente.get("/comandas/").status_code == 302
     assert postar(cliente, "/login/codigo", {"codigo": "123456"}).status_code == 401
-    resposta = postar(cliente, "/login/codigo", {"codigo": totp.codigo_atual(segredo)})
+    codigo = totp.codigo_atual(segredo)
+    resposta = postar(cliente, "/login/codigo", {"codigo": codigo})
     assert resposta.headers["Location"].endswith("/comandas/")
     assert cliente.get("/comandas/").status_code == 200
 
     # O mesmo código não serve de novo.
     entrar(cliente, "admin")
-    assert postar(cliente, "/login/codigo", {"codigo": totp.codigo_atual(segredo)}).status_code == 401
+    assert postar(cliente, "/login/codigo", {"codigo": codigo}).status_code == 401
 
 
 def test_etapa_do_codigo_expira(cliente, app):
