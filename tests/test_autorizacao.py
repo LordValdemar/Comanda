@@ -139,3 +139,25 @@ def test_uma_vez_sem_prazo_e_historico(logado, app):
     liberacao = consultar(app, "SELECT id FROM autorizacoes WHERE modo = 'sempre'")[0][0]
     post(caixa, f"/autorizar/{liberacao}/encerrar")
     assert maria.get(f"/comandas/{segunda}/fechar").status_code == 403
+
+
+def test_so_quem_tem_autorizar_os_outros_mostra_o_qr(logado, app):
+    criar_pessoa(app, "edilson", "garcom")
+    criar_pessoa(app, "caixa", "caixa")
+    permitir(logado, **{"cancelar.garcom": permissoes.AUTORIZACAO})
+    with app.app_context():
+        conexao = db.obter()
+        with conexao:
+            conexao.execute("UPDATE usuarios SET fecha_conta = 1 WHERE usuario = 'edilson'")
+    edilson, caixa = pessoa(app, "edilson"), pessoa(app, "caixa")
+    assert edilson.get("/autorizar").status_code == 403
+    assert "Autorizar</a>" not in edilson.get("/comandas/").get_data(as_text=True)
+
+    edilson.get(f"/autorizacao/{codigo_do_qr(caixa, 'cancelar')}")
+    criar_pessoa(app, "maria", "garcom")
+    pessoa(app, "maria").get(f"/autorizacao/{codigo_do_qr(logado, 'cancelar')}")
+    pagina = caixa.get("/autorizar").get_data(as_text=True)
+    assert "edilson" in pagina and "maria" not in pagina
+
+    permitir(logado, **{"autorizar_comanda.caixa": permissoes.NAO})
+    assert caixa.get("/autorizar").status_code == 403
