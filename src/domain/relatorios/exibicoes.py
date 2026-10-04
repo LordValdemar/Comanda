@@ -1,11 +1,16 @@
 """Relatório de exibições do Painel (prova de que a propaganda passou): por propaganda, por tela e por dia."""
 
 from dataclasses import dataclass, field
-from datetime import date
+from datetime import date, datetime, timedelta
 from typing import Protocol
 
 DIAS_PADRAO = 7
 CABECALHO = ["Data", "Tela", "Propaganda", "Exibições", "Tempo total (segundos)"]
+
+
+def inicio_da_retencao(agora: datetime, dias: int) -> datetime:
+    """Exibições de antes disto são apagadas (o histórico guardado é de `dias` dias)."""
+    return agora - timedelta(days=dias)
 
 
 @dataclass(frozen=True)

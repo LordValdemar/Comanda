@@ -4,6 +4,7 @@ import os
 
 from flask import Blueprint, current_app, flash, redirect, render_template, request, send_file, url_for
 
+from src.domain.comanda import ErroComanda, taxa_percentual_valida
 from src.domain.empresas import LOGO_MAX_BYTES, CadastroInvalido, ler_logo
 
 from . import backup, db
@@ -36,11 +37,9 @@ def pagina():
             flash("Logo removido do cupom.", "ok")
             return redirect(url_for("ajustes.pagina"))
         try:
-            taxa = float(request.form.get("taxa_servico", "10").replace(",", ".") or 0)
-        except ValueError:
-            taxa = -1
-        if not 0 <= taxa <= 30:
-            flash("A taxa de serviço vai de 0 a 30%.", "erro")
+            taxa = taxa_percentual_valida(request.form.get("taxa_servico", "10"))
+        except ErroComanda as erro:
+            flash(str(erro), "erro")
             return redirect(url_for("ajustes.pagina"))
         arquivo = request.files.get("logo")
         if arquivo and arquivo.filename:
