@@ -29,6 +29,8 @@ Usa a mesma base do **Painel de Propagandas** (Python + Flask + Waitress + SQLit
   | Administrador | tudo, mais cardápio, equipe, ajustes e reabrir comanda fechada |
 
 - **Histórico de quem fez o quê**: cancelamentos, descontos, pagamentos removidos e reaberturas.
+- **Garçom que fecha conta**: em Usuários, o administrador autoriza um garçom a receber pagamentos, tirar a taxa de serviço e finalizar a conta. Desconto e cancelamento continuam com o caixa.
+- **Controle de ponto** (opcional): a equipe só usa o sistema depois de registrar a entrada e dentro do próprio horário. A entrada e a saída são registradas lendo, com o celular, um **QR code** que aparece num aparelho fixo do estabelecimento; ele muda a cada 2 minutos e vale para uma pessoa só. O administrador vê quem está trabalhando, **desconecta** qualquer pessoa de todos os aparelhos e baixa o relatório de horas. Funciona sem internet.
 - **Backup automático diário**, mais o botão "fazer backup agora" em Ajustes.
 - **Segurança**: verificação em duas etapas (código do aplicativo autenticador), **HTTPS na rede local** com o comando `sudo ./deploy/ativar-https.sh`, senhas guardadas de forma que não dá para ler, bloqueio depois de 5 senhas erradas e proteção contra os ataques comuns em sites.
 

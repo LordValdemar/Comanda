@@ -13,7 +13,7 @@
   <div class="acoes">
     <a class="botao secundario" href="{{ url_for('comandas.lista') }}">← Comandas</a>
     <a class="botao secundario" href="{{ url_for('comandas.cupom', comanda_id=comanda.id) }}">Conferência</a>
-    {% if pode('caixa') and comanda.status == 'aberta' %}<a class="botao" href="{{ url_for('comandas.fechamento', comanda_id=comanda.id) }}">Fechar conta</a>{% endif %}
+    {% if pode_fechar_conta() and comanda.status == 'aberta' %}<a class="botao" href="{{ url_for('comandas.fechamento', comanda_id=comanda.id) }}">Fechar conta</a>{% endif %}
   </div>
   {% if comanda.status == 'aberta' %}
   <details>
@@ -34,9 +34,9 @@
   <form method="post" action="{{ url_for('comandas.lancar_itens', comanda_id=comanda.id) }}" id="form-pedido">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <div class="linha">
-      <div style="flex-basis:90px"><label>Código</label><input type="text" name="codigo" maxlength="10" inputmode="numeric" placeholder="atalho"></div>
-      <div style="flex-basis:70px"><label>Qtd.</label><input type="number" name="codigo_qtd" min="1" max="999" value="1"></div>
-      <div style="flex-basis:200px"><label>Observação</label><input type="text" name="codigo_obs" maxlength="120" placeholder="ex.: sem cebola"></div>
+      <div class="u-b90"><label>Código</label><input type="text" name="codigo" maxlength="10" inputmode="numeric" placeholder="atalho"></div>
+      <div class="u-b70"><label>Qtd.</label><input type="number" name="codigo_qtd" min="1" max="999" value="1"></div>
+      <div class="u-b200"><label>Observação</label><input type="text" name="codigo_obs" maxlength="120" placeholder="ex.: sem cebola"></div>
     </div>
     <div class="campo"><input type="search" id="filtro-produtos" placeholder="🔎 Procurar no cardápio..." autocomplete="off"></div>
     {% if not grupos %}<p class="dica">O cardápio está vazio. {% if pode('admin') %}<a href="{{ url_for('cardapio.lista') }}">Cadastre os produtos</a>.{% endif %}</p>{% endif %}

@@ -151,3 +151,53 @@ form.finalizar { margin-top: 16px; }
 .qr-2fa img { background: #fff; border: 1px solid #e6e9f0; border-radius: 8px; }
 .qr-2fa > div { flex: 1; min-width: 240px; }
 .chave { font-family: ui-monospace, monospace; font-size: .9rem; background: #f2f4f7; padding: 6px 8px; border-radius: 6px; word-break: break-all; }
+
+/* Ponto (registro de entrada e saída) */
+[hidden] { display: none !important; }
+.opcoes { display: flex; gap: 4px 14px; flex-wrap: wrap; margin: 6px 0 10px; }
+.opcoes label { display: inline-flex; gap: 5px; align-items: center; color: #1d2433; font-size: .9rem; margin: 0; }
+.endereco { font-family: ui-monospace, monospace; font-size: .85rem; background: #f2f4f7; padding: 6px 8px; border-radius: 6px; word-break: break-all; }
+.pausa-geral { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; border-left: 6px solid #22a447; }
+.pausa-geral strong { display: flex; align-items: center; gap: 8px; font-size: 1.05rem; }
+.pausa-geral .dica { margin-top: 2px; }
+.pausa-geral form { margin: 0; }
+.pausa-geral.pausada { border-left-color: #d93b3b; background: #fff5f5; }
+.cabecalho-lista { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
+.cabecalho-lista h2 { margin: 0; }
+.ponto-cartao { text-align: center; padding: 28px 20px; border-top: 6px solid #aab3c5; }
+.ponto-cartao.trabalhando { border-top-color: #22a447; }
+.ponto-cartao .acoes { justify-content: center; }
+.ponto-relogio { font-size: 1.4rem; font-weight: 700; color: #17682f; }
+button.grande { font-size: 1.2rem; padding: 14px 28px; margin: 6px 0 4px; }
+.lista-equipe .pessoa { border-top: 1px solid #eee; padding: 12px 0; }
+.lista-equipe .pessoa:first-child { border-top: 0; }
+.pessoa-topo { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; flex-wrap: wrap; }
+.pessoa-topo form { margin: 0; }
+.ponto-qr-instrucao { font-size: 1.05rem; background: #eef4ff; border-radius: 8px; padding: 12px; }
+button.link-discreto { background: none; color: #6b7385; text-decoration: underline; padding: 4px; font-size: .85rem; white-space: normal; }
+.leitor-qr { margin: 14px 0 6px; }
+.leitor-qr > button { white-space: normal; max-width: 100%; }
+#leitor-video { width: 100%; max-width: 420px; aspect-ratio: 1; object-fit: cover; border-radius: 12px; background: #000; display: block; margin: 0 auto; }
+.leitor-aviso { margin: 10px 0; }
+.leitor-aviso.erro { color: #9b1c1c; }
+
+/* Ajustes pontuais (no lugar de style="..." no HTML: a CSP não aceita estilo embutido). */
+.u-mt0 { margin-top: 0 !important; }
+.u-mt6 { margin: 6px 0 0 !important; }
+.u-mt8 { margin-top: 8px !important; }
+.u-mt10 { margin-top: 10px !important; }
+.u-mt12 { margin-top: 12px !important; }
+.u-mb0 { margin-bottom: 0 !important; }
+.u-m0 { margin: 0 !important; }
+.u-f2 { flex: 2 !important; }
+.u-f3 { flex: 3 !important; }
+.u-b70 { flex-basis: 70px !important; }
+.u-b90 { flex-basis: 90px !important; }
+.u-b200 { flex-basis: 200px !important; }
+.u-b220 { flex-basis: 220px !important; }
+.u-b100 { flex-basis: 100% !important; }
+.u-dir { text-align: right !important; }
+.u-max120 { max-width: 120px !important; }
+.u-inline { display: inline !important; }
+.u-junto { border-top: 0 !important; padding-top: 0 !important; }
+.u-entre { align-items: center !important; justify-content: space-between !important; }

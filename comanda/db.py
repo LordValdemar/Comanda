@@ -108,6 +108,32 @@ MIGRACOES = [
     ALTER TABLE usuarios ADD COLUMN totp_segredo TEXT;
     ALTER TABLE usuarios ADD COLUMN totp_ultimo INTEGER NOT NULL DEFAULT 0;  -- impede reusar o mesmo código
     """,
+    # 3 - o administrador pode autorizar um garçom a fechar contas
+    """
+    ALTER TABLE usuarios ADD COLUMN fecha_conta INTEGER NOT NULL DEFAULT 0;
+    """,
+    # 4 - controle de ponto: horário de trabalho por usuário e registros de entrada e saída.
+    # O nome do usuário é copiado no registro: o histórico continua se o usuário for excluído.
+    """
+    ALTER TABLE usuarios ADD COLUMN exige_ponto INTEGER NOT NULL DEFAULT 1;
+    ALTER TABLE usuarios ADD COLUMN horario_dias TEXT NOT NULL DEFAULT '0123456';
+    ALTER TABLE usuarios ADD COLUMN horario_inicio TEXT;
+    ALTER TABLE usuarios ADD COLUMN horario_fim TEXT;
+
+    CREATE TABLE ponto_registros (
+        id             INTEGER PRIMARY KEY,
+        usuario_id     INTEGER REFERENCES usuarios(id) ON DELETE SET NULL,
+        usuario_nome   TEXT    NOT NULL,
+        entrada        TEXT    NOT NULL,
+        saida          TEXT,
+        motivo_saida   TEXT,
+        encerrado_por  INTEGER REFERENCES usuarios(id) ON DELETE SET NULL,
+        ip             TEXT
+    );
+    -- Cada pessoa tem no máximo um ponto aberto.
+    CREATE UNIQUE INDEX ponto_um_aberto ON ponto_registros(usuario_id) WHERE saida IS NULL;
+    CREATE INDEX ponto_entrada ON ponto_registros(entrada);
+    """,
 ]
 
 

@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% block titulo %}Ponto{% endblock %}
+{% block classe_main %}medio{% endblock %}
+{% block conteudo %}
+<section class="ponto-cartao {{ 'trabalhando' if registro else 'fora' }}">
+  {% if not exige %}
+    <h2>Ponto</h2>
+    <p>O estabelecimento não exige registro de ponto para o seu usuário.</p>
+    <a class="botao" href="{{ inicio }}">Continuar</a>
+  {% elif registro %}
+    <div class="ponto-relogio">● Trabalhando desde {{ registro.entrada|data_hora('%H:%M') }}</div>
+    <p class="dica">Seu horário: {{ horario }}.</p>
+    {% if exige_qr and not presenca %}
+      <p class="ponto-qr-instrucao">Para registrar a saída, leia o <b>QR code do ponto</b> que fica na tela do ponto.</p>
+
+      <div class="leitor-qr">
+        <button type="button" id="abrir-camera" class="grande">📷 Abrir a câmera e ler o QR code</button>
+        <div id="leitor" hidden>
+          <video id="leitor-video" playsinline muted></video>
+          <p id="leitor-aviso" class="leitor-aviso"></p>
+          <button type="button" id="fechar-camera" class="secundario">Fechar a câmera</button>
+        </div>
+      </div>
+    {% endif %}
+    <div class="acoes">
+      <a class="botao secundario" href="{{ inicio }}">Voltar ao trabalho</a>
+      {% if not exige_qr or presenca %}
+        <form action="{{ url_for('ponto.saida') }}" method="post" data-confirmar="Registrar a saída agora? Você será desconectado.">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button class="perigo">Registrar saída</button>
+        </form>
+      {% endif %}
+    </div>
+    {% if exige_qr and not presenca %}
+      <form action="{{ url_for('ponto.saida') }}" method="post" class="u-mt12"
+            data-confirmar="Sair sem ler o QR code? A saída fica anotada como “sem QR code” para o administrador.">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button class="link-discreto">Estou sem acesso ao QR code: registrar saída mesmo assim</button>
+      </form>
+    {% endif %}
+  {% else %}
+    <h2>Olá, {{ g.usuario.usuario }}!</h2>
+    {% if no_horario and exige_qr and not presenca %}
+      <p class="ponto-qr-instrucao">Para registrar a entrada, leia o <b>QR code do ponto</b> que fica na tela do ponto.</p>
+      <div class="leitor-qr">
+        <button type="button" id="abrir-camera" class="grande">📷 Abrir a câmera e ler o QR code</button>
+        <div id="leitor" hidden>
+          <video id="leitor-video" playsinline muted></video>
+          <p id="leitor-aviso" class="leitor-aviso"></p>
+          <button type="button" id="fechar-camera" class="secundario">Fechar a câmera</button>
+        </div>
+      </div>
+      <p class="dica">Também dá para usar o app Câmera do celular: aponte para o QR e toque no link que aparecer.</p>
+    {% elif no_horario %}
+      <p>{{ 'QR code lido. ' if presenca else '' }}Registre a entrada para começar a usar o sistema.</p>
+      <form action="{{ url_for('ponto.entrada') }}" method="post">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button class="grande">Registrar entrada</button>
+      </form>
+    {% else %}
+      <div class="aviso erro">Fora do seu horário de trabalho. O sistema fica liberado só no seu horário.</div>
+    {% endif %}
+    <p class="dica">Seu horário: {{ horario }}.</p>
+  {% endif %}
+</section>
+
+{% if registros %}
+<section>
+  <h2>Seus últimos 7 dias</h2>
+  <div class="tabela-rolagem">
+  <table>
+    <thead><tr><th>Entrada</th><th>Saída</th><th class="numero">Tempo</th></tr></thead>
+    <tbody>
+      {% for r in registros %}
+        <tr>
+          <td>{{ r.entrada|data_hora }}</td>
+          <td>{% if r.saida %}{{ r.saida|data_hora('%H:%M') }}{% if r.motivo_saida and r.motivo_saida != 'saída' %} <span class="dica">({{ r.motivo_saida }})</span>{% endif %}{% else %}<span class="selo estado-pronto">trabalhando</span>{% endif %}</td>
+          <td class="numero">{{ r.segundos|duracao }}</td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+</section>
+{% endif %}
+{% endblock %}
+{% block scripts %}
+<script src="{{ url_for('static', filename='vendor/jsqr/jsQR.js') }}"></script>
+<script src="{{ url_for('static', filename='ponto_leitor.js') }}"></script>
+{% endblock %}

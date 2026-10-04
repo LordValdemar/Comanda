@@ -18,7 +18,7 @@ from logging.handlers import TimedRotatingFileHandler
 from flask import Flask, request
 from werkzeug.middleware.proxy_fix import ProxyFix
 
-from . import ajustes, auth, cardapio, certificado, comandas, cozinha, db, formatos, relatorios
+from . import ajustes, auth, cardapio, certificado, comandas, cozinha, db, formatos, ponto, relatorios
 
 PASTA_PROJETO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -105,6 +105,7 @@ def create_app(sobrescrever=None):
     app.teardown_appcontext(db.fechar)
 
     auth.registrar(app)
+    ponto.registrar(app)
     for modulo in (cardapio, comandas, cozinha, relatorios, ajustes, certificado):
         app.register_blueprint(modulo.bp)
 
@@ -127,9 +128,15 @@ def create_app(sobrescrever=None):
         resposta.headers.setdefault("X-Content-Type-Options", "nosniff")
         resposta.headers.setdefault("X-Frame-Options", "DENY")
         resposta.headers.setdefault("Referrer-Policy", "same-origin")
+        # Libera só o que o sistema usa: tela acesa na cozinha e câmera para o QR do ponto.
+        resposta.headers.setdefault(
+            "Permissions-Policy",
+            "camera=(self), screen-wake-lock=(self), fullscreen=(self), microphone=(), geolocation=(), "
+            "payment=(), usb=(), serial=(), bluetooth=(), browsing-topics=()",
+        )
         resposta.headers.setdefault(
             "Content-Security-Policy",
-            "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self'; "
+            "default-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self'; frame-src 'none'; object-src 'none'; "
             "frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
         )
         return resposta

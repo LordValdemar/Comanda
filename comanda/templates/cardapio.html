@@ -5,12 +5,12 @@
   <h2>Novo produto</h2>
   <form method="post" action="{{ url_for('cardapio.novo_produto') }}" class="linha">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-    <div style="flex-basis:220px"><label>Nome</label><input type="text" name="nome" required maxlength="80"></div>
+    <div class="u-b220"><label>Nome</label><input type="text" name="nome" required maxlength="80"></div>
     <div><label>Preço (R$)</label><input type="text" name="preco" required inputmode="decimal" placeholder="0,00"></div>
     <div><label>Categoria</label>
       <select name="categoria_id"><option value="">— sem categoria —</option>{% for c in categorias %}<option value="{{ c.id }}">{{ c.nome }}</option>{% endfor %}</select>
     </div>
-    <div style="flex-basis:90px"><label>Código</label><input type="text" name="codigo" maxlength="10" placeholder="opcional"></div>
+    <div class="u-b90"><label>Código</label><input type="text" name="codigo" maxlength="10" placeholder="opcional"></div>
     <div class="fixo"><label class="marcar"><input type="checkbox" name="vai_cozinha" checked> Vai para a cozinha</label></div>
     <div class="fixo"><button type="submit">Adicionar</button></div>
   </form>
@@ -31,12 +31,12 @@
     </summary>
     <form method="post" action="{{ url_for('cardapio.alterar_produto', produto_id=p.id) }}" class="linha">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-      <div style="flex-basis:220px"><label>Nome</label><input type="text" name="nome" value="{{ p.nome }}" required maxlength="80"></div>
+      <div class="u-b220"><label>Nome</label><input type="text" name="nome" value="{{ p.nome }}" required maxlength="80"></div>
       <div><label>Preço (R$)</label><input type="text" name="preco" value="{{ entrada_reais(p.preco_centavos) }}" required inputmode="decimal"></div>
       <div><label>Categoria</label>
         <select name="categoria_id"><option value="">— sem categoria —</option>{% for c in categorias %}<option value="{{ c.id }}" {% if c.id == p.categoria_id %}selected{% endif %}>{{ c.nome }}</option>{% endfor %}</select>
       </div>
-      <div style="flex-basis:90px"><label>Código</label><input type="text" name="codigo" value="{{ p.codigo or '' }}" maxlength="10"></div>
+      <div class="u-b90"><label>Código</label><input type="text" name="codigo" value="{{ p.codigo or '' }}" maxlength="10"></div>
       <div class="fixo"><label class="marcar"><input type="checkbox" name="vai_cozinha" {% if p.vai_cozinha %}checked{% endif %}> Vai para a cozinha</label></div>
       <div class="fixo"><button type="submit" name="acao" value="salvar">Salvar</button></div>
     </form>

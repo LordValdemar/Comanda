@@ -14,6 +14,8 @@
     {% if g.usuario %}
       <nav>
         {% set ep = request.endpoint or '' %}
+        {% set sem_ponto = g.get('ponto_exige') and not g.get('ponto_aberto') %}
+        {% if not sem_ponto %}
         {% if pode('caixa', 'garcom') %}
           <a href="{{ url_for('comandas.lista') }}" {% if ep.startswith('comandas.') and ep != 'comandas.historico' %}class="atual"{% endif %}>Comandas</a>
         {% endif %}
@@ -24,9 +26,14 @@
           <a href="{{ url_for('comandas.historico') }}" {% if ep == 'comandas.historico' %}class="atual"{% endif %}>Fechadas</a>
           <a href="{{ url_for('relatorios.vendas') }}" {% if ep == 'relatorios.vendas' %}class="atual"{% endif %}>Relatórios</a>
         {% endif %}
+        {% endif %}
+        {% if g.get('ponto_exige') %}
+          <a href="{{ url_for('ponto.meu') }}" {% if ep == 'ponto.meu' %}class="atual"{% endif %}>{{ '● Ponto aberto' if g.ponto_aberto else 'Ponto' }}</a>
+        {% endif %}
         {% if pode('admin') %}
           <a href="{{ url_for('cardapio.lista') }}" {% if ep.startswith('cardapio.') %}class="atual"{% endif %}>Cardápio</a>
           <a href="{{ url_for('auth.usuarios') }}" {% if ep == 'auth.usuarios' %}class="atual"{% endif %}>Usuários</a>
+          <a href="{{ url_for('ponto.equipe') }}" {% if ep.startswith('ponto.') %}class="atual"{% endif %}>Ponto</a>
           <a href="{{ url_for('ajustes.pagina') }}" {% if ep == 'ajustes.pagina' %}class="atual"{% endif %}>Ajustes</a>
         {% endif %}
         <a href="{{ url_for('auth.minha_conta') }}" {% if ep == 'auth.minha_conta' %}class="atual"{% endif %}>Minha conta</a>

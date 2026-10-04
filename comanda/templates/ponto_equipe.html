@@ -1,0 +1,160 @@
+{% extends "base.html" %}
+{% block titulo %}Ponto da equipe{% endblock %}
+{% block classe_main %}largo{% endblock %}
+{% block conteudo %}
+<section class="pausa-geral {{ 'rodando' if ativo else 'pausada' }}">
+  <div>
+    {% if ativo %}
+      <strong><span class="status online"></span>Controle de ponto ligado</strong>
+      <div class="dica">A equipe só usa o sistema depois de registrar a entrada e dentro do próprio horário. Administradores não batem ponto.</div>
+    {% else %}
+      <strong>Controle de ponto desligado</strong>
+      <div class="dica">A equipe usa o sistema a qualquer hora, sem registrar entrada. Ligue para exigir o ponto e o horário de trabalho.</div>
+    {% endif %}
+  </div>
+  <form action="{{ url_for('ponto.ajustes') }}" method="post"
+        {% if ativo %}data-confirmar="Desligar o controle de ponto? A equipe passa a entrar a qualquer hora."{% endif %}>
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    {% if ativo %}
+      <button name="ativo" value="0" class="secundario">Desligar</button>
+    {% else %}
+      <button name="ativo" value="1">Ligar o controle de ponto</button>
+    {% endif %}
+  </form>
+</section>
+
+<section>
+  <div class="cabecalho-lista">
+    <h2>QR code do ponto</h2>
+    <form action="{{ url_for('ponto.qr_ajustes') }}" method="post"
+          {% if exige_qr %}data-confirmar="Dispensar o QR code? A equipe poderá registrar o ponto de qualquer lugar."{% endif %}>
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      {% if exige_qr %}
+        <button name="acao" value="dispensar" class="secundario">Dispensar o QR code</button>
+      {% else %}
+        <button name="acao" value="exigir">Exigir o QR code</button>
+      {% endif %}
+    </form>
+  </div>
+  {% if exige_qr %}
+    <p class="u-mt8">O ponto só é registrado lendo, com o celular, o QR code que aparece num aparelho fixo do estabelecimento. O código muda a cada 2 minutos e vale para uma pessoa só: quando alguém lê, a tela mostra um código novo na hora. Assim ninguém consegue registrar de fora.</p>
+    <ol class="passos">
+      <li>Num aparelho que fica no estabelecimento (TV, tablet ou o computador do caixa), abra o endereço abaixo e deixe em tela cheia.</li>
+      <li>Ao chegar e ao sair, cada pessoa aponta a câmera do celular para o código e toca em <b>Registrar</b>.</li>
+    </ol>
+    <p class="endereco">{{ endereco_quiosque }}</p>
+    <div class="acoes">
+      <a class="botao" href="{{ endereco_quiosque }}" target="_blank" rel="noopener">Abrir a tela do QR code</a>
+      <form action="{{ url_for('ponto.qr_ajustes') }}" method="post" data-confirmar="Criar um endereço novo? O endereço atual para de funcionar.">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button name="acao" value="novo_endereco" class="secundario">Gerar endereço novo</button>
+      </form>
+    </div>
+    <p class="dica">Gere um endereço novo se alguém de fora conseguir o atual. A saída sem QR code é permitida, mas fica anotada nos registros.</p>
+  {% else %}
+    <p class="dica u-mt8">Dispensado: o ponto é registrado por um botão, de qualquer lugar.</p>
+  {% endif %}
+</section>
+
+<section>
+  <h2>Equipe</h2>
+  <p class="dica u-mt0">Defina os dias e o horário de cada pessoa. Fora do horário ela não consegue registrar a entrada, e o ponto aberto fecha sozinho quando o horário acaba. <b>Desconectar</b> encerra a sessão em todos os aparelhos na hora.</p>
+  <div class="lista-equipe">
+  {% for p in pessoas %}
+    <div class="pessoa">
+      <div class="pessoa-topo">
+        <div>
+          <strong>{{ p.usuario }}</strong> <span class="selo">{{ PAPEIS[p.papel] }}</span>
+          {% if p.papel == 'admin' %}
+            <div class="dica">Administrador: não bate ponto.</div>
+          {% elif p.trabalhando_desde %}
+            <div><span class="selo estado-pronto">● Trabalhando desde {{ p.trabalhando_desde|data_hora('%d/%m %H:%M') }}</span></div>
+          {% elif not p.exige_ponto %}
+            <div class="dica">Sem ponto (usa o sistema a qualquer hora).</div>
+          {% else %}
+            <div class="dica">Fora do expediente{% if not no_horario[p.id] %} · fora do horário agora{% endif %}.</div>
+          {% endif %}
+          {% if p.papel != 'admin' %}<div class="dica">🗓 {{ resumo_da_pessoa(p) }}</div>{% endif %}
+        </div>
+        {% if p.id != g.usuario.id %}
+          <form action="{{ url_for('ponto.desconectar_pessoa', usuario_id=p.id) }}" method="post" data-confirmar="Desconectar {{ p.usuario }} de todos os aparelhos agora?">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button class="perigo">Desconectar</button>
+          </form>
+        {% endif %}
+      </div>
+      {% if p.papel != 'admin' %}
+      <details>
+        <summary>Horário de trabalho</summary>
+        <form action="{{ url_for('ponto.salvar_pessoa', usuario_id=p.id) }}" method="post">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <div class="opcoes">
+            {% for nome_dia in dias %}
+              <label><input type="checkbox" name="dias" value="{{ loop.index0 }}" {% if loop.index0|string in p.horario_dias %}checked{% endif %}> {{ nome_dia }}</label>
+            {% endfor %}
+          </div>
+          <div class="linha">
+            <div><label>Das</label><input type="time" name="inicio" value="{{ p.horario_inicio or '' }}"></div>
+            <div><label>Até</label><input type="time" name="fim" value="{{ p.horario_fim or '' }}"></div>
+            <div class="fixo"><button type="submit">Salvar</button></div>
+          </div>
+          <p class="dica u-mt6">Em branco = o dia todo. Turno que vira a noite (ex.: 18:00 às 02:00) conta no dia em que começa.</p>
+          <label class="marcar"><input type="checkbox" name="isento" {% if not p.exige_ponto %}checked{% endif %}> Não exigir ponto desta pessoa (ex.: tablet fixo da cozinha)</label>
+        </form>
+      </details>
+      {% endif %}
+    </div>
+  {% endfor %}
+  </div>
+</section>
+
+<section>
+  <div class="cabecalho-lista">
+    <h2>Registros de ponto</h2>
+    <a class="botao secundario" href="{{ url_for('ponto.relatorio_csv', de=inicio.isoformat(), ate=fim.isoformat(), pessoa=pessoa_id or '') }}">Baixar planilha (CSV)</a>
+  </div>
+  <form method="get" class="linha u-mt12">
+    <div><label for="de">De</label><input type="date" id="de" name="de" value="{{ inicio.isoformat() }}"></div>
+    <div><label for="ate">Até</label><input type="date" id="ate" name="ate" value="{{ fim.isoformat() }}"></div>
+    <div><label for="pessoa">Pessoa</label>
+      <select id="pessoa" name="pessoa">
+        <option value="">Todas</option>
+        {% for p in pessoas if p.papel != 'admin' %}<option value="{{ p.id }}" {% if p.id == pessoa_id %}selected{% endif %}>{{ p.usuario }}</option>{% endfor %}
+      </select>
+    </div>
+    <div class="fixo"><button type="submit" class="secundario">Filtrar</button></div>
+  </form>
+
+  {% if totais %}
+  <div class="cartoes u-mt12">
+    {% for nome, segundos in totais %}
+      <div class="cartao"><div class="valor">{{ segundos|duracao }}</div><div class="rotulo">{{ nome }}</div></div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  {% if registros %}
+  <div class="tabela-rolagem">
+  <table>
+    <thead><tr><th>Pessoa</th><th>Entrada</th><th>Saída</th><th class="numero">Tempo</th></tr></thead>
+    <tbody>
+      {% for r in registros %}
+        <tr>
+          <td>{{ r.usuario_nome }}</td>
+          <td>{{ r.entrada|data_hora }}</td>
+          <td>
+            {% if r.saida %}{{ r.saida|data_hora('%H:%M') }}
+              {% if r.motivo_saida and r.motivo_saida != 'saída' %}<span class="dica">({{ r.motivo_saida }}{% if r.encerrado_por_nome %}: {{ r.encerrado_por_nome }}{% endif %})</span>{% endif %}
+            {% else %}<span class="selo estado-pronto">trabalhando</span>{% endif %}
+          </td>
+          <td class="numero">{{ r.segundos|duracao }}</td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  {% else %}
+    <p class="dica">Nenhum registro no período.</p>
+  {% endif %}
+</section>
+{% endblock %}

@@ -1,0 +1,3 @@
+jsQR 1.4.0 (https://github.com/cozmo/jsQR), licença Apache 2.0.
+Cópia de dist/jsQR.js do pacote npm "jsqr@1.4.0" (sha256 bc40c8a15196236b2314db0856f72ca0b49980cd5413b8c852a7349f5fee0859).
+Usado pela página do ponto para ler o QR code com a câmera do celular.

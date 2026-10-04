@@ -188,6 +188,13 @@ def pode(*papeis):
     return g.usuario is not None and (g.usuario["papel"] == "admin" or g.usuario["papel"] in papeis)
 
 
+def pode_fechar_conta():
+    """Caixa e administrador fecham contas; o garçom, só se o administrador autorizou."""
+    if pode("caixa"):
+        return True
+    return g.usuario is not None and g.usuario["papel"] == "garcom" and bool(g.usuario["fecha_conta"])
+
+
 def _proximo_seguro(destino):
     # Só caminhos internos: evita redirecionar para outro site depois do login.
     if destino and destino.startswith("/") and not destino.startswith("//") and "\\" not in destino:
@@ -426,6 +433,13 @@ def alterar_usuario(usuario_id):
             with conexao:
                 conexao.execute("UPDATE usuarios SET papel = ? WHERE id = ?", (papel, usuario_id))
             flash(f"“{alvo['usuario']}” agora é {PAPEIS[papel]}.", "ok")
+        elif acao == "fecha_conta":
+            if alvo["papel"] != "garcom":
+                raise ErroUsuario("Só garçons recebem esta permissão (caixa e administrador já fecham contas).")
+            novo = 0 if alvo["fecha_conta"] else 1
+            with conexao:
+                conexao.execute("UPDATE usuarios SET fecha_conta = ? WHERE id = ?", (novo, usuario_id))
+            flash(f"“{alvo['usuario']}” {'agora pode' if novo else 'não pode mais'} fechar contas.", "ok")
         elif acao == "desativar_2fa":
             desativar_2fa(conexao, usuario_id)
             log.info("Verificação em duas etapas de “%s” desativada pelo administrador", alvo["usuario"])
@@ -452,4 +466,5 @@ def registrar(app):
     app.before_request(_verificar_csrf)
     app.jinja_env.globals["csrf_token"] = token_csrf
     app.jinja_env.globals["pode"] = pode
+    app.jinja_env.globals["pode_fechar_conta"] = pode_fechar_conta
     app.jinja_env.globals["PAPEIS"] = PAPEIS

@@ -124,6 +124,22 @@ Recomendado pelo menos para o **administrador** e o **caixa**. Cada pessoa ativa
 
 > O relógio do celular precisa estar certo (automático). Se o código nunca é aceito, confira a hora do celular.
 
+## 5.3. Controle de ponto (opcional)
+
+Com o ponto ligado, garçons, caixa e cozinha só usam a Comanda depois de **registrar a entrada**, e só dentro do horário de cada um. O administrador não bate ponto.
+
+1. Entre como administrador e abra **Ponto**.
+2. Em **Equipe → Horário de trabalho**, defina os dias e o horário de cada pessoa. Marque **"Não exigir ponto"** no usuário do tablet fixo da cozinha.
+3. Clique em **Ligar o controle de ponto**.
+4. Em **QR code do ponto**, clique em **Abrir a tela do QR code** num aparelho que fica no estabelecimento (TV, tablet ou o computador do caixa) e deixe em tela cheia.
+5. Ao chegar e ao sair, cada pessoa aponta a câmera do celular para o QR e toca em **Registrar**.
+
+O QR code muda a cada 2 minutos e vale para uma pessoa só: quando alguém lê, a tela mostra outro na hora. Uma foto do código não serve depois.
+
+> **Câmera dentro da página:** o botão "Abrir a câmera" da Comanda só funciona com o **HTTPS ligado** (seção 5.1); sem o cadeado, o navegador não libera a câmera. Sem HTTPS, use o **app Câmera** do celular: ele lê o QR e abre o link normalmente.
+
+Para tirar alguém do sistema na hora (em todos os aparelhos), use **Desconectar**, em **Ponto** ou em **Usuários**.
+
 ## 6. Comandos do dia a dia
 
 ```bash

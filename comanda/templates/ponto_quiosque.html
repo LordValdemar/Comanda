@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>Ponto · {{ nome_estabelecimento }}</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="{{ url_for('static', filename='ponto_quiosque.css') }}">
+</head>
+<body data-api="{{ url_for('ponto.quiosque_api', codigo=codigo) }}">
+  <main>
+    <h1>{{ nome_estabelecimento }}</h1>
+    <p class="instrucao">Registro de ponto: aponte a câmera do celular para o código</p>
+    <div class="quadro"><img id="qr" alt="QR code do ponto"></div>
+    <p id="relogio" class="relogio"></p>
+    <p id="aviso" class="aviso">Carregando…</p>
+  </main>
+  <script src="{{ url_for('static', filename='ponto_quiosque.js') }}"></script>
+</body>
+</html>

@@ -37,6 +37,19 @@
         </form>
       </td>
       <td class="acoes-tabela">
+        {% if u.papel == 'garcom' %}
+        <form method="post" action="{{ url_for('auth.alterar_usuario', usuario_id=u.id) }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="acao" value="fecha_conta">
+          {% if u.fecha_conta %}<span class="selo estado-pronto">fecha contas</span> <button type="submit" class="secundario">Tirar</button>
+          {% else %}<button type="submit" class="secundario" title="Recebe pagamentos, tira a taxa de serviço e finaliza a conta. Desconto e cancelamento continuam com o caixa.">Deixar fechar contas</button>{% endif %}
+        </form>
+        {% endif %}
+        {% if u.id != g.usuario.id and u.ativo %}
+        <form method="post" action="{{ url_for('ponto.desconectar_pessoa', usuario_id=u.id) }}" data-confirmar="Desconectar “{{ u.usuario }}” de todos os aparelhos agora?">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="voltar" value="usuarios">
+          <button type="submit" class="secundario" title="Encerra a sessão em todos os aparelhos e fecha o ponto">Desconectar</button>
+        </form>
+        {% endif %}
         <form method="post" action="{{ url_for('auth.alterar_usuario', usuario_id=u.id) }}">
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="acao" value="ativo">
           <button type="submit" class="secundario">{{ 'Desativar' if u.ativo else 'Reativar' }}</button>
