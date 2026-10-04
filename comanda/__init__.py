@@ -113,6 +113,7 @@ def create_app(sobrescrever=None):
     app.jinja_env.filters["reais"] = formatos.reais
     app.jinja_env.filters["data_hora"] = formatos.data_hora
     app.jinja_env.filters["hora"] = formatos.hora
+    app.jinja_env.filters["data_extenso"] = formatos.data_extenso
     app.jinja_env.filters["minutos"] = formatos.minutos_desde
 
     @app.context_processor

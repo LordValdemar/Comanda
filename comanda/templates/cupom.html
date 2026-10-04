@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Comanda {{ comanda.numero }} · {{ estabelecimento }}</title>
+  <title>Comanda {{ comanda.numero }} · {{ loja.nome_estabelecimento }}</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='cupom.css') }}">
   <link rel="icon" href="data:,">
 </head>
@@ -15,42 +15,64 @@
   </div>
   <div class="cupom">
     <div class="centro">
-      <b class="grande">{{ estabelecimento }}</b>
-      {% if endereco %}<div>{{ endereco }}</div>{% endif %}
-      <div class="linha-tracejada"></div>
-      <b>{{ 'CONFERÊNCIA DE CONTA' if comanda.status == 'aberta' else ('CANCELADA' if comanda.status == 'cancelada' else 'RECIBO') }}</b>
-      <div>Comanda {{ comanda.numero }}{% if comanda.mesa %} · Mesa {{ comanda.mesa }}{% endif %}</div>
-      {% if comanda.cliente %}<div>{{ comanda.cliente }}</div>{% endif %}
-      {% if comanda.garcom_nome %}<div>Atendido por {{ comanda.garcom_nome }}</div>{% endif %}
-      <div>{{ comanda.aberta_em|data_hora }}{% if comanda.fechada_em %} – {{ comanda.fechada_em|hora }}{% endif %}</div>
+      {% if loja.logo %}<img src="{{ loja.logo }}" alt="" class="logo">{% endif %}
+      <div class="nome-loja">{{ loja.nome_estabelecimento|upper }}</div>
     </div>
+    {% if loja.cnpj %}<div>CNPJ: {{ loja.cnpj }}</div>{% endif %}
+    {% if loja.email %}<div>E-mail: {{ loja.email }}</div>{% endif %}
+    {% if loja.endereco %}<div>Endereço: {{ loja.endereco }}</div>{% endif %}
+    {% if loja.telefone %}<div>Telefone: {{ loja.telefone }}</div>{% endif %}
     <div class="linha-tracejada"></div>
-    <table>
-      {% for i in itens %}
-      <tr><td colspan="2">{{ i.nome }}</td></tr>
-      <tr><td class="dica">{{ i.quantidade }} × {{ i.preco_centavos|reais }}</td><td class="valor">{{ (i.quantidade * i.preco_centavos)|reais }}</td></tr>
-      {% endfor %}
+    <div class="centro">
+      <div>NÃO É DOCUMENTO FISCAL</div>
+      {% if comanda.status == 'aberta' %}<div>CONFERÊNCIA DE CONTA</div>
+      {% elif comanda.status == 'cancelada' %}<div>COMANDA CANCELADA</div>
+      {% else %}<div>COMPROVANTE DE VENDA</div>{% endif %}
+    </div>
+    <div class="espaco"></div>
+    {% if loja.local %}<div>Local: {{ loja.local|upper }}</div>{% endif %}
+    <div>Comanda: {{ comanda.numero }}{% if comanda.mesa %} · Mesa: {{ comanda.mesa }}{% endif %}</div>
+    <div>Data: {{ comanda.aberta_em|data_extenso }}</div>
+    <div>Horário: {{ comanda.aberta_em|hora }}{% if comanda.fechada_em %} às {{ comanda.fechada_em|hora }}{% endif %}</div>
+    {% if comanda.cliente %}<div>Cliente: {{ comanda.cliente }}</div>{% endif %}
+    {% if comanda.garcom_nome %}<div>Atendido por: {{ comanda.garcom_nome }}</div>{% endif %}
+    <div class="linha-tracejada"></div>
+    <table class="itens">
+      <thead><tr><th>Nome</th><th class="qtd">QTD.</th><th class="valor">V.Unit.</th><th class="valor">V.Total</th></tr></thead>
+      <tbody>
+        {% for i in itens %}
+        <tr><td>{{ i.nome }}</td><td class="qtd">{{ i.quantidade }}</td>
+          <td class="valor">{{ '%.2f'|format(i.preco_centavos / 100)|replace('.', ',') }}</td>
+          <td class="valor">{{ '%.2f'|format(i.quantidade * i.preco_centavos / 100)|replace('.', ',') }}</td></tr>
+        {% endfor %}
+      </tbody>
     </table>
     <div class="linha-tracejada"></div>
     <table>
-      <tr><td>Consumo</td><td class="valor">{{ contas.subtotal|reais }}</td></tr>
+      <tr><td>Itens na lista</td><td class="valor">{{ itens|sum(attribute='quantidade') }}</td></tr>
+    </table>
+    <div class="espaco"></div>
+    <table>
+      <tr><td>Sub-Total</td><td class="valor">{{ contas.subtotal|reais }}</td></tr>
       {% if contas.taxa %}<tr><td>Serviço ({{ '%g'|format(comanda.taxa_percentual) }}%)</td><td class="valor">{{ contas.taxa|reais }}</td></tr>{% endif %}
       {% if contas.desconto %}<tr><td>Desconto</td><td class="valor">− {{ contas.desconto|reais }}</td></tr>{% endif %}
-      <tr class="grande"><td><b>TOTAL</b></td><td class="valor"><b>{{ contas.total|reais }}</b></td></tr>
+      <tr class="total"><td>Valor final</td><td class="valor">{{ contas.total|reais }}</td></tr>
     </table>
     {% if pagamentos %}
     <div class="linha-tracejada"></div>
     <table>
-      {% for p in pagamentos %}
-      <tr><td>{{ formas[p.forma] }}</td><td class="valor">{{ p.recebido_centavos|reais }}</td></tr>
-      {% endfor %}
+      <tr><td>Condições de pagamento:</td><td class="valor">À vista</td></tr>
+      <tr><td>Formas de pagamento:</td><td class="valor">{{ formas_usadas|join(', ') }}</td></tr>
+      {% if pagamentos|length > 1 or contas.troco %}
+        {% for p in pagamentos %}<tr class="dica"><td>{{ formas[p.forma] }}</td><td class="valor">{{ p.recebido_centavos|reais }}</td></tr>{% endfor %}
+      {% endif %}
       {% if contas.troco %}<tr><td>Troco</td><td class="valor">{{ contas.troco|reais }}</td></tr>{% endif %}
+      {% if comanda.status == 'aberta' and contas.restante > 0 %}<tr><td><b>Falta pagar</b></td><td class="valor"><b>{{ contas.restante|reais }}</b></td></tr>{% endif %}
     </table>
     {% endif %}
     <div class="linha-tracejada"></div>
     <div class="centro">
-      {% if rodape %}<div>{{ rodape }}</div>{% endif %}
-      <div class="dica">Não é documento fiscal</div>
+      {% if loja.rodape_cupom %}<div>{{ loja.rodape_cupom }}</div>{% endif %}
     </div>
   </div>
 

@@ -569,11 +569,12 @@ def cupom(comanda_id):
         "WHERE comanda_id = ? ORDER BY a.id",
         (comanda_id,),
     ).fetchall() if permissoes.pode("cancelar") or permissoes.pode("vendas") else []
+    from .ajustes import dados_da_loja  # evita importação circular
+
+    formas_usadas = list(dict.fromkeys(FORMAS.get(p["forma"], p["forma"]) for p in pagamentos))
     return render_template(
         "cupom.html", comanda=comanda, itens=itens, pagamentos=pagamentos, formas=FORMAS,
-        contas=totais(conexao, comanda), auditoria=auditoria,
-        estabelecimento=db.ler_config("nome_estabelecimento", "Comanda"),
-        endereco=db.ler_config("endereco"), rodape=db.ler_config("rodape_cupom", "Obrigado pela preferência!"),
+        contas=totais(conexao, comanda), auditoria=auditoria, loja=dados_da_loja(), formas_usadas=formas_usadas,
     )
 
 

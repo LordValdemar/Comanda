@@ -4,14 +4,30 @@
 {% block conteudo %}
 <section>
   <h2>Estabelecimento</h2>
-  <form method="post">
+  <form method="post" enctype="multipart/form-data">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-    <div class="campo"><label>Nome (aparece no topo e no cupom)</label><input type="text" name="nome_estabelecimento" maxlength="80" value="{{ nome_estabelecimento }}"></div>
-    <div class="campo"><label>Endereço / telefone (no cupom)</label><input type="text" name="endereco" maxlength="160" value="{{ endereco }}"></div>
-    <div class="campo"><label>Mensagem no fim do cupom</label><input type="text" name="rodape_cupom" maxlength="160" value="{{ rodape_cupom }}"></div>
+    <p class="dica">Os dados aparecem no topo de cada conferência e recibo. Deixe em branco o que não quiser mostrar.</p>
+    <div class="campo"><label>Nome (aparece no topo e no cupom)</label><input type="text" name="nome_estabelecimento" maxlength="80" value="{{ dados.nome_estabelecimento }}"></div>
+    <div class="campo"><label>CNPJ</label><input type="text" name="cnpj" maxlength="20" inputmode="numeric" placeholder="00.000.000/0000-00" value="{{ dados.cnpj }}"></div>
+    <div class="campo"><label>E-mail</label><input type="email" name="email" maxlength="80" value="{{ dados.email }}"></div>
+    <div class="campo"><label>Endereço</label><input type="text" name="endereco" maxlength="160" value="{{ dados.endereco }}"></div>
+    <div class="campo"><label>Telefone</label><input type="text" name="telefone" maxlength="40" inputmode="tel" value="{{ dados.telefone }}"></div>
+    <div class="campo"><label>Local / unidade <span class="dica">(ex.: Dom Pedro)</span></label><input type="text" name="local" maxlength="60" value="{{ dados.local }}"></div>
+    <div class="campo"><label>Mensagem no fim do cupom</label><input type="text" name="rodape_cupom" maxlength="160" value="{{ dados.rodape_cupom }}"></div>
+    <div class="campo">
+      <label>Logo <span class="dica">(PNG ou JPG, até 300 KB; preto e branco imprime melhor na térmica)</span></label>
+      {% if dados.logo %}<img src="{{ dados.logo }}" alt="Logo atual" class="logo-ajustes">{% endif %}
+      <input type="file" name="logo" accept="image/png,image/jpeg">
+    </div>
     <div class="campo"><label>Taxa de serviço (%)</label><input type="text" name="taxa_servico" inputmode="decimal" value="{{ taxa_servico }}" class="u-max120"></div>
     <button type="submit">Salvar</button>
   </form>
+  {% if dados.logo %}
+  <form method="post" class="u-mt12" data-confirmar="Tirar o logo do cupom?">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <button name="acao" value="remover_logo" class="secundario">Remover o logo</button>
+  </form>
+  {% endif %}
 </section>
 <section>
   <h2>Segurança</h2>

@@ -91,6 +91,18 @@ def data_hora(texto, formato="%d/%m/%Y %H:%M"):
     return de_texto_utc(texto).astimezone(fuso()).strftime(formato)
 
 
+MESES = ("janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro",
+         "novembro", "dezembro")
+
+
+def data_extenso(texto):
+    """Texto UTC do banco → "04 de outubro de 2026" (horário local)."""
+    if not texto:
+        return ""
+    momento = de_texto_utc(texto).astimezone(fuso())
+    return f"{momento.day:02d} de {MESES[momento.month - 1]} de {momento.year}"
+
+
 def hora(texto):
     return data_hora(texto, "%H:%M")
 

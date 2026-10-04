@@ -228,3 +228,4 @@ table.permissoes select { min-width: 150px; }
 .legenda-comandas .cor.cartao-pronto { border-color: #22a447; background: #d6f5df; }
 .legenda-comandas .cor.cartao-preparando { border-color: #2f6fed; background: #dce8ff; }
 .legenda-comandas .cor.cartao-aguardando { border-color: #c77700; background: #fff1d6; }
+.logo-ajustes { display: block; max-width: 200px; max-height: 90px; margin: 6px 0; background: #fff; border: 1px solid #e3e7ef; padding: 4px; }

@@ -165,7 +165,7 @@ def test_fechamento_com_taxa_desconto_e_troco(logado, app):
         comanda = db.obter().execute("SELECT * FROM comandas").fetchone()
         assert (comanda["status"], comanda["total_centavos"]) == ("fechada", 5000)
     cupom = logado.get(f"/comandas/{comanda_id}/cupom").get_data(as_text=True)
-    assert "RECIBO" in cupom and "R$ 50,00" in cupom and "Troco" in cupom and "Não é documento fiscal" in cupom
+    assert "COMPROVANTE DE VENDA" in cupom and "R$ 50,00" in cupom and "Troco" in cupom and "NÃO É DOCUMENTO FISCAL" in cupom
     # Com a comanda fechada, o mesmo número pode ser aberto de novo.
     assert abrir_comanda(logado, 9) != comanda_id
 
@@ -269,7 +269,7 @@ def test_garcom_que_atende_aparece_na_comanda(logado, app):
     postar(logado, f"/comandas/{comanda_joao}/itens", {f"qtd_{lanche}": "1"})
     postar(logado, f"/comandas/{comanda_joao}/fechar", {"acao": "pagar", "forma": "pix", "valor": "22"})
     postar(logado, f"/comandas/{comanda_joao}/fechar", {"acao": "finalizar"})
-    assert "Atendido por joao" in logado.get(f"/comandas/{comanda_joao}/cupom").get_data(as_text=True)
+    assert "Atendido por: joao" in logado.get(f"/comandas/{comanda_joao}/cupom").get_data(as_text=True)
     assert "<td>joao</td>" in logado.get("/comandas/historico").get_data(as_text=True)
     assert ";joao;" in logado.get("/relatorios/comandas.csv").get_data(as_text=True)
 
@@ -295,3 +295,26 @@ def test_cor_da_comanda_segue_a_cozinha(logado, app):
     assert cartao() == "cartao-pronto"
     postar(logado, f"/comandas/{comanda_id}/itens/{item_id}", {"acao": "entregue"})
     assert cartao() == ""
+
+
+def test_dados_e_logo_da_loja_no_cupom(logado, app):
+    import io
+
+    lanche = criar_produto(logado, "X-Salada", "20,00")
+    comanda_id = abrir_comanda(logado, 3, mesa="01")
+    postar(logado, f"/comandas/{comanda_id}/itens", {f"qtd_{lanche}": "2"})
+    png = b"\x89PNG\r\n\x1a\n" + b"\x00" * 60
+    postar(logado, "/ajustes/", {
+        "nome_estabelecimento": "Comercial Gustavo", "cnpj": "36.740.823/0001-09", "email": "sac@exemplo.com.br",
+        "endereco": "Travessa Manoel de Oliveira Gomes, 03", "telefone": "(99) 98436-9495", "local": "Dom Pedro",
+        "taxa_servico": "10", "logo": (io.BytesIO(png), "logo.png"),
+    }, content_type="multipart/form-data")
+    cupom = logado.get(f"/comandas/{comanda_id}/cupom").get_data(as_text=True)
+    for texto in ("COMERCIAL GUSTAVO", "CNPJ: 36.740.823/0001-09", "Telefone: (99) 98436-9495", "Local: DOM PEDRO",
+                  "CONFERÊNCIA DE CONTA", "V.Unit.", "Itens na lista", 'src="data:image/png;base64,'):
+        assert texto in cupom, texto
+    resposta = postar(logado, "/ajustes/", {"taxa_servico": "10", "logo": (io.BytesIO(b"<svg>"), "x.svg")},
+                      content_type="multipart/form-data", follow_redirects=True)
+    assert "PNG ou JPG" in resposta.get_data(as_text=True)
+    postar(logado, "/ajustes/", {"acao": "remover_logo"})
+    assert "data:image/png" not in logado.get(f"/comandas/{comanda_id}/cupom").get_data(as_text=True)
