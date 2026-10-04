@@ -51,7 +51,17 @@
     if (evento.target.matches && evento.target.matches("input[data-mascara]")) aplicar(evento.target);
   });
 
-  // Campo de dinheiro já preenchido (ex.: o que falta pagar): ao tocar, seleciona tudo, e o que se digita substitui.
+  // Campo de dinheiro que veio preenchido (ex.: o que falta pagar): a primeira tecla substitui o valor
+  // em vez de somar a ele, mesmo digitando rápido (81,40 + "50" vira 0,50, e não 8.140,50).
+  document.querySelectorAll('input[data-mascara="dinheiro"]').forEach(function (campo) {
+    if (campo.value) campo.dataset.preenchido = "1";
+  });
+  document.addEventListener("beforeinput", function (evento) {
+    const campo = evento.target;
+    if (!campo.matches || !campo.matches('input[data-mascara="dinheiro"]') || campo.dataset.preenchido !== "1") return;
+    delete campo.dataset.preenchido;
+    if ((evento.inputType || "").indexOf("insert") === 0) campo.value = "";
+  });
   document.addEventListener("focusin", function (evento) {
     const campo = evento.target;
     if (campo.matches && campo.matches('input[data-mascara="dinheiro"]') && campo.value) {

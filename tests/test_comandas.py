@@ -318,3 +318,15 @@ def test_dados_e_logo_da_loja_no_cupom(logado, app):
     assert "PNG ou JPG" in resposta.get_data(as_text=True)
     postar(logado, "/ajustes/", {"acao": "remover_logo"})
     assert "data:image/png" not in logado.get(f"/comandas/{comanda_id}/cupom").get_data(as_text=True)
+
+
+def test_troco_nunca_chega_a_uma_cedula_de_200(logado):
+    lanche = criar_produto(logado, "X-Salada", "20,00")
+    comanda_id = abrir_comanda(logado, 4)
+    postar(logado, f"/comandas/{comanda_id}/itens", {f"qtd_{lanche}": "1"})        # 22,00 com a taxa
+    resposta = postar(logado, f"/comandas/{comanda_id}/fechar", {"acao": "pagar", "forma": "dinheiro", "valor": "81.401,00"},
+                      follow_redirects=True)
+    assert "Confira o valor recebido" in resposta.get_data(as_text=True)
+    resposta = postar(logado, f"/comandas/{comanda_id}/fechar", {"acao": "pagar", "forma": "dinheiro", "valor": "100,00"},
+                      follow_redirects=True)
+    assert "Troco: R$ 78,00" in resposta.get_data(as_text=True)

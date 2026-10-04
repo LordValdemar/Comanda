@@ -29,6 +29,7 @@ STATUS_ITEM = {
     "pendente": "Aguardando", "preparando": "Preparando", "pronto": "Pronto", "entregue": "Entregue", "cancelado": "Cancelado",
 }
 MAX_QUANTIDADE = 999
+MAIOR_CEDULA = 20000  # R$ 200,00: ninguém entrega uma nota inteira a mais, então o troco é sempre menor
 
 
 class ErroComanda(ValueError):
@@ -164,6 +165,8 @@ def registrar_pagamento(conexao, comanda, forma, valor, usuario_id=None):
             raise ErroComanda("Esta conta já está paga.")
         if valor > restante and forma != "dinheiro":
             raise ErroComanda(f"O valor passa do que falta pagar ({reais(restante)}). Só pagamento em dinheiro tem troco.")
+        if valor - restante >= MAIOR_CEDULA:
+            raise ErroComanda(f"Troco de {reais(valor - restante)}? Confira o valor recebido (falta pagar {reais(restante)}).")
         conexao.execute(
             "INSERT INTO pagamentos (comanda_id, forma, valor_centavos, recebido_centavos, registrado_por) "
             "VALUES (?, ?, ?, ?, ?)",
