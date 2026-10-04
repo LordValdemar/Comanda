@@ -38,11 +38,13 @@ def resumo(conexao, inicio, fim):
         f"COALESCE(SUM(c.desconto_centavos), 0) AS descontos FROM comandas c WHERE {filtro}",
         (de, ate),
     ).fetchone()
-    # Taxa de serviço recalculada a partir dos itens (é o que vai para a equipe).
+    # Taxa de serviço (é o que vai para a equipe): a gravada no fechamento, igual à do cupom.
+    # Comandas fechadas antes dessa gravação existir são recalculadas a partir dos itens.
     taxa = conexao.execute(
-        f"SELECT COALESCE(SUM(ROUND(sub * c.taxa_percentual / 100)), 0) FROM comandas c "
-        f"JOIN (SELECT comanda_id, SUM(preco_centavos * quantidade) AS sub FROM itens WHERE status != 'cancelado' "
-        f"GROUP BY comanda_id) s ON s.comanda_id = c.id WHERE {filtro} AND c.cobrar_taxa = 1",
+        f"SELECT COALESCE(SUM(COALESCE(c.taxa_centavos, CASE WHEN c.cobrar_taxa = 1 "
+        f"THEN ROUND(s.sub * c.taxa_percentual / 100) ELSE 0 END)), 0) FROM comandas c "
+        f"LEFT JOIN (SELECT comanda_id, SUM(preco_centavos * quantidade) AS sub FROM itens WHERE status != 'cancelado' "
+        f"GROUP BY comanda_id) s ON s.comanda_id = c.id WHERE {filtro}",
         (de, ate),
     ).fetchone()[0]
     formas = conexao.execute(

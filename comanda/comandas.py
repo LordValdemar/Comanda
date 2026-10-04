@@ -9,7 +9,17 @@ from flask import Blueprint, abort, flash, g, redirect, render_template, request
 from . import db
 from .auth import papel_exigido, pode, pode_fechar_conta
 from .cardapio import agrupar, produtos_ativos
-from .formatos import ValorInvalido, agora_utc, entrada_reais, hoje_local, intervalo_utc, ler_reais, para_texto_utc, reais
+from .formatos import (
+    ValorInvalido,
+    agora_utc,
+    entrada_reais,
+    hoje_local,
+    intervalo_utc,
+    ler_reais,
+    para_texto_utc,
+    porcentagem,
+    reais,
+)
 
 bp = Blueprint("comandas", __name__, url_prefix="/comandas")
 log = logging.getLogger("comanda.comandas")
@@ -42,7 +52,7 @@ def totais(conexao, comanda):
         "SELECT COALESCE(SUM(preco_centavos * quantidade), 0) FROM itens WHERE comanda_id = ? AND status != 'cancelado'",
         (comanda["id"],),
     ).fetchone()[0]
-    taxa = round(subtotal * comanda["taxa_percentual"] / 100) if comanda["cobrar_taxa"] else 0
+    taxa = porcentagem(subtotal, comanda["taxa_percentual"]) if comanda["cobrar_taxa"] else 0
     desconto = min(comanda["desconto_centavos"], subtotal + taxa)
     total = subtotal + taxa - desconto
     pagamentos = conexao.execute(
@@ -145,12 +155,18 @@ def registrar_pagamento(conexao, comanda, forma, valor, usuario_id=None):
         raise ErroComanda("Forma de pagamento inválida.")
     if valor <= 0:
         raise ErroComanda("Informe o valor do pagamento.")
-    restante = totais(conexao, comanda)["restante"]
-    if restante <= 0:
-        raise ErroComanda("Esta conta já está paga.")
-    if valor > restante and forma != "dinheiro":
-        raise ErroComanda(f"O valor passa do que falta pagar ({reais(restante)}). Só pagamento em dinheiro tem troco.")
     with conexao:
+        # Trava a gravação enquanto confere quanto falta: dois caixas registrando ao mesmo tempo
+        # não conseguem pagar a mais.
+        conexao.execute("BEGIN IMMEDIATE")
+        comanda = conexao.execute("SELECT * FROM comandas WHERE id = ?", (comanda["id"],)).fetchone()
+        if comanda["status"] != "aberta":
+            raise ErroComanda("Esta comanda já foi fechada.")
+        restante = totais(conexao, comanda)["restante"]
+        if restante <= 0:
+            raise ErroComanda("Esta conta já está paga.")
+        if valor > restante and forma != "dinheiro":
+            raise ErroComanda(f"O valor passa do que falta pagar ({reais(restante)}). Só pagamento em dinheiro tem troco.")
         conexao.execute(
             "INSERT INTO pagamentos (comanda_id, forma, valor_centavos, recebido_centavos, registrado_por) "
             "VALUES (?, ?, ?, ?, ?)",
@@ -160,17 +176,22 @@ def registrar_pagamento(conexao, comanda, forma, valor, usuario_id=None):
 
 
 def fechar(conexao, comanda, usuario_id=None):
-    if comanda["status"] != "aberta":
-        raise ErroComanda("Esta comanda já foi fechada.")
-    contas = totais(conexao, comanda)
-    if contas["restante"] > 0:
-        raise ErroComanda(f"Ainda falta receber {reais(contas['restante'])}.")
-    if contas["restante"] < 0:
-        raise ErroComanda("Os pagamentos passam do total (o desconto mudou?). Remova um pagamento e lance de novo.")
     with conexao:
+        # Trava enquanto confere e fecha: nada entra na conta entre a conferência e o fechamento.
+        conexao.execute("BEGIN IMMEDIATE")
+        comanda = conexao.execute("SELECT * FROM comandas WHERE id = ?", (comanda["id"],)).fetchone()
+        if comanda["status"] != "aberta":
+            raise ErroComanda("Esta comanda já foi fechada.")
+        contas = totais(conexao, comanda)
+        if contas["restante"] > 0:
+            raise ErroComanda(f"Ainda falta receber {reais(contas['restante'])}.")
+        if contas["restante"] < 0:
+            raise ErroComanda("Os pagamentos passam do total (o desconto mudou?). Remova um pagamento e lance de novo.")
+        # Grava os valores exatos do cupom: os relatórios usam estes, sem recalcular.
         conexao.execute(
-            "UPDATE comandas SET status = 'fechada', total_centavos = ?, fechada_por = ?, fechada_em = ? WHERE id = ?",
-            (contas["total"], usuario_id, para_texto_utc(agora_utc()), comanda["id"]),
+            "UPDATE comandas SET status = 'fechada', total_centavos = ?, taxa_centavos = ?, desconto_centavos = ?, "
+            "fechada_por = ?, fechada_em = ? WHERE id = ?",
+            (contas["total"], contas["taxa"], contas["desconto"], usuario_id, para_texto_utc(agora_utc()), comanda["id"]),
         )
     log.info("Comanda %s fechada: %s", comanda["numero"], reais(contas["total"]))
     return contas
@@ -416,7 +437,7 @@ def _ajustar_conta(conexao, comanda):
     else:
         desconto = comanda["desconto_centavos"]
     contas = totais(conexao, comanda)
-    taxa = round(contas["subtotal"] * comanda["taxa_percentual"] / 100) if cobrar_taxa else 0
+    taxa = porcentagem(contas["subtotal"], comanda["taxa_percentual"]) if cobrar_taxa else 0
     if desconto > contas["subtotal"] + taxa:
         raise ErroComanda("O desconto não pode passar do valor da conta.")
     with conexao:
@@ -471,7 +492,8 @@ def reabrir(comanda_id):
     try:
         with conexao:
             conexao.execute(
-                "UPDATE comandas SET status = 'aberta', total_centavos = NULL, fechada_por = NULL, fechada_em = NULL "
+                "UPDATE comandas SET status = 'aberta', total_centavos = NULL, taxa_centavos = NULL, fechada_por = NULL, "
+                "fechada_em = NULL "
                 "WHERE id = ?",
                 (comanda_id,),
             )

@@ -134,6 +134,10 @@ MIGRACOES = [
     CREATE UNIQUE INDEX ponto_um_aberto ON ponto_registros(usuario_id) WHERE saida IS NULL;
     CREATE INDEX ponto_entrada ON ponto_registros(entrada);
     """,
+    # 5 - a taxa de serviço exata do cupom fica gravada ao fechar (os relatórios usam ela)
+    """
+    ALTER TABLE comandas ADD COLUMN taxa_centavos INTEGER;
+    """,
 ]
 
 

@@ -2,6 +2,7 @@
 
 import re
 from datetime import datetime, time, timedelta, timezone
+from decimal import ROUND_HALF_UP, Decimal
 from zoneinfo import ZoneInfo
 
 from flask import current_app
@@ -37,6 +38,16 @@ def ler_reais(texto, permitir_zero=True):
     if centavos == 0 and not permitir_zero:
         raise ValorInvalido("O valor precisa ser maior que zero.")
     return centavos
+
+
+def porcentagem(centavos, percentual):
+    """`percentual`% de `centavos`, arredondado como no comércio (meio centavo para cima).
+
+    Usa Decimal: o round() do Python arredonda meio para o par (R$ 1,005 → R$ 1,00) e a
+    conta com float pode errar na última casa.
+    """
+    valor = Decimal(int(centavos)) * Decimal(str(percentual)) / Decimal(100)
+    return int(valor.quantize(Decimal(1), rounding=ROUND_HALF_UP))
 
 
 def entrada_reais(centavos):

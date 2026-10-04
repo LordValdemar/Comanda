@@ -212,3 +212,26 @@ def test_cancelar_comanda_e_reabrir(logado, app):
 
 def test_comanda_inexistente(logado):
     assert logado.get("/comandas/999").status_code == 404
+
+
+def test_taxa_arredonda_meio_centavo_para_cima_e_relatorio_bate_com_o_cupom(logado, app):
+    from comanda import db, formatos, relatorios
+
+    # Arredondamento comercial: o round() do Python daria 100 (meio para o par).
+    assert formatos.porcentagem(1005, 10) == 101
+    assert formatos.porcentagem(1004, 10) == 100
+    assert formatos.porcentagem(999, 12.5) == 125
+
+    produto = criar_produto(logado, "Pão de queijo", "10,05")
+    comanda_id = abrir_comanda(logado, 7)
+    postar(logado, f"/comandas/{comanda_id}/itens", {f"qtd_{produto}": "1"})
+    pagina = logado.get(f"/comandas/{comanda_id}/fechar").get_data(as_text=True)
+    assert "R$ 1,01" in pagina and "R$ 11,06" in pagina
+    postar(logado, f"/comandas/{comanda_id}/fechar", {"acao": "pagar", "forma": "pix", "valor": "11,06"})
+    postar(logado, f"/comandas/{comanda_id}/fechar", {"acao": "finalizar"})
+    with app.app_context():
+        comanda = db.obter().execute("SELECT * FROM comandas WHERE id = ?", (comanda_id,)).fetchone()
+        assert (comanda["status"], comanda["total_centavos"], comanda["taxa_centavos"]) == ("fechada", 1106, 101)
+        hoje = formatos.hoje_local()
+        resumo = relatorios.resumo(db.obter(), hoje, hoje)
+    assert resumo["faturamento"] == 1106 and resumo["taxa"] == 101
