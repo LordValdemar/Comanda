@@ -179,6 +179,7 @@ def papel_exigido(*papeis):
             if g.usuario["papel"] != "admin" and g.usuario["papel"] not in papeis:
                 abort(403)
             return funcao(*args, **kwargs)
+        interna.papeis = {"admin", *papeis}  # para a varredura de permissões dos testes
         return interna
     return decorador
 
