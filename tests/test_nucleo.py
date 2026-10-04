@@ -12,9 +12,10 @@ from pathlib import Path
 RAIZ = Path(__file__).resolve().parent.parent
 
 
-def _impressao_digital(raiz):
+def _impressao_digital(raiz, infra):
     soma = hashlib.sha256()
     arquivos = [raiz / "src" / "__init__.py", *sorted((raiz / "src" / "domain").rglob("*.py"))]
+    arquivos += [raiz / "src" / "infrastructure" / item for item in sorted(infra)]
     for caminho in arquivos:
         soma.update(caminho.relative_to(raiz).as_posix().encode() + b"\0" + caminho.read_bytes() + b"\0")
     return soma.hexdigest()
@@ -22,7 +23,7 @@ def _impressao_digital(raiz):
 
 def test_nucleo_igual_ao_da_plataforma():
     registro = json.loads((RAIZ / "src" / "nucleo.json").read_text(encoding="utf-8"))
-    assert _impressao_digital(RAIZ) == registro["impressao_digital"], (
-        "src/domain foi mudado aqui. As regras são da plataforma-comanda: mude lá e copie de novo "
-        "com ferramentas/copiar_nucleo.py."
+    assert _impressao_digital(RAIZ, registro.get("infraestrutura", [])) == registro["impressao_digital"], (
+        "O núcleo (src/domain e a infraestrutura copiada) foi mudado aqui. As regras são da plataforma-comanda: "
+        "mude lá e copie de novo com ferramentas/copiar_nucleo.py."
     )
