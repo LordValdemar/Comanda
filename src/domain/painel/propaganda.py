@@ -5,6 +5,7 @@ from datetime import date, datetime
 
 from ..erros import ErroDeDominio
 from ..horario import TODOS_OS_DIAS
+from ..ordem import trocar_com_vizinho
 
 DURACAO_PADRAO = 10
 MAX_DURACAO = 3600
@@ -154,10 +155,4 @@ def nova_ordem(ids: list[int], propaganda_id: int, direcao: str) -> list[int] | 
     """A lista com a propaganda um lugar acima ou abaixo (None se já está na ponta)."""
     if direcao not in ("cima", "baixo"):
         raise ErroDePropaganda("Direção inválida.")
-    posicao = ids.index(propaganda_id)
-    destino = posicao - 1 if direcao == "cima" else posicao + 1
-    if not 0 <= destino < len(ids):
-        return None
-    ordem = list(ids)
-    ordem[posicao], ordem[destino] = ordem[destino], ordem[posicao]
-    return ordem
+    return trocar_com_vizinho(ids, propaganda_id, para_cima=direcao == "cima")
