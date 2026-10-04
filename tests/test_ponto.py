@@ -245,3 +245,13 @@ def test_csp_sem_estilo_embutido_e_permissoes(logado):
             with open(os.path.join(raiz, nome), encoding="utf-8") as arquivo:
                 html = arquivo.read()
             assert 'style="' not in html and "<style" not in html, nome
+
+
+def test_garcom_que_muda_de_papel_perde_o_fechar_conta(logado, app):
+    criar_pessoa(app, "maria", "garcom")
+    maria = id_de(app, "maria")
+    post(logado, f"/usuarios/{maria}", {"acao": "fecha_conta"})
+    post(logado, f"/usuarios/{maria}", {"acao": "papel", "papel": "cozinha"})
+    post(logado, f"/usuarios/{maria}", {"acao": "papel", "papel": "garcom"})
+    linha = consultar(app, "SELECT papel, fecha_conta FROM usuarios WHERE id = ?", maria)[0]
+    assert (linha["papel"], linha["fecha_conta"]) == ("garcom", 0)

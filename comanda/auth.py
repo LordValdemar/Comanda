@@ -432,7 +432,12 @@ def alterar_usuario(usuario_id):
             if eh_ultimo_admin and papel != "admin":
                 raise ErroUsuario("É preciso ter pelo menos um administrador ativo.")
             with conexao:
-                conexao.execute("UPDATE usuarios SET papel = ? WHERE id = ?", (papel, usuario_id))
+                # "Fecha contas" é uma permissão extra do garçom: não acompanha a pessoa para outro papel.
+                conexao.execute(
+                    "UPDATE usuarios SET papel = ?, fecha_conta = CASE WHEN ? = 'garcom' THEN fecha_conta ELSE 0 END "
+                    "WHERE id = ?",
+                    (papel, papel, usuario_id),
+                )
             flash(f"“{alvo['usuario']}” agora é {PAPEIS[papel]}.", "ok")
         elif acao == "fecha_conta":
             if alvo["papel"] != "garcom":
