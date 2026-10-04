@@ -235,3 +235,38 @@ def test_taxa_arredonda_meio_centavo_para_cima_e_relatorio_bate_com_o_cupom(loga
         hoje = formatos.hoje_local()
         resumo = relatorios.resumo(db.obter(), hoje, hoje)
     assert resumo["faturamento"] == 1106 and resumo["taxa"] == 101
+
+
+def test_garcom_que_atende_aparece_na_comanda(logado, app):
+    lanche = criar_produto(logado, "X-Salada", "20,00")
+    criar_pessoa(app, "maria", "garcom")
+    criar_pessoa(app, "joao", "garcom")
+    with app.app_context():
+        ids = {u["usuario"]: u["id"] for u in db.obter().execute("SELECT id, usuario FROM usuarios").fetchall()}
+
+    maria = app.test_client()
+    entrar(maria, "maria")
+    comanda_maria = abrir_comanda(maria, 1)
+    assert "Garçom: <b>maria</b>" in maria.get(f"/comandas/{comanda_maria}").get_data(as_text=True)
+
+    resposta = postar(logado, "/comandas/", {"numero": "2", "garcom_id": str(ids["joao"])})
+    comanda_joao = int(resposta.headers["Location"].rstrip("/").split("/")[-1])
+    sem_garcom = abrir_comanda(logado, 3)
+    postar(logado, f"/comandas/{sem_garcom}/dados", {"garcom_id": str(ids["maria"])})
+    assert "Garçom: <b>maria</b>" in logado.get(f"/comandas/{sem_garcom}").get_data(as_text=True)
+    postar(logado, f"/comandas/{sem_garcom}/dados", {"garcom_id": str(ids["admin"])})  # não é garçom: não muda
+    with app.app_context():
+        assert db.obter().execute("SELECT garcom_id FROM comandas WHERE id = ?", (sem_garcom,)).fetchone()[0] == ids["maria"]
+
+    quarta = abrir_comanda(logado, 5)
+    joao = app.test_client()
+    entrar(joao, "joao")
+    postar(joao, f"/comandas/{quarta}/itens", {f"qtd_{lanche}": "1"})
+    assert "Garçom: <b>joao</b>" in joao.get(f"/comandas/{quarta}").get_data(as_text=True)
+
+    postar(logado, f"/comandas/{comanda_joao}/itens", {f"qtd_{lanche}": "1"})
+    postar(logado, f"/comandas/{comanda_joao}/fechar", {"acao": "pagar", "forma": "pix", "valor": "22"})
+    postar(logado, f"/comandas/{comanda_joao}/fechar", {"acao": "finalizar"})
+    assert "Atendido por joao" in logado.get(f"/comandas/{comanda_joao}/cupom").get_data(as_text=True)
+    assert "<td>joao</td>" in logado.get("/comandas/historico").get_data(as_text=True)
+    assert ";joao;" in logado.get("/relatorios/comandas.csv").get_data(as_text=True)

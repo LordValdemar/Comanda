@@ -14,6 +14,10 @@
       <div><label>Número</label><input type="number" name="numero" min="1" max="99999" required inputmode="numeric" value="{{ numero_buscado }}" {% if numero_buscado %}autofocus{% endif %}></div>
       <div><label>Mesa</label><input type="text" name="mesa" maxlength="20" placeholder="opcional"></div>
       <div><label>Cliente</label><input type="text" name="cliente" maxlength="60" placeholder="opcional"></div>
+      {% if g.usuario.papel != 'garcom' and garcons %}
+      <div><label>Garçom</label><select name="garcom_id"><option value="">— ninguém ainda —</option>
+        {% for p in garcons %}<option value="{{ p.id }}">{{ p.usuario }}</option>{% endfor %}</select></div>
+      {% endif %}
       <div class="fixo"><button type="submit">Abrir</button></div>
     </form>
   </details>
@@ -45,6 +49,7 @@
     <a class="cartao-comanda {% if c.prontos %}tem-pronto{% endif %}" href="{{ url_for('comandas.detalhe', comanda_id=c.id) }}">
       <span class="numero-comanda">{{ c.numero }}</span>
       <span>{% if c.mesa %}Mesa {{ c.mesa }}{% endif %}{% if c.mesa and c.cliente %} · {% endif %}{{ c.cliente or '' }}</span>
+      {% if c.garcom_nome %}<span class="dica">👤 {{ c.garcom_nome }}</span>{% endif %}
       <b>{{ c.consumo|reais }}</b>
       <span class="dica">há {{ c.aberta_em|minutos }} min
         {% if c.na_cozinha %} · 🍳 {{ c.na_cozinha }}{% endif %}{% if c.prontos %} · 🔔 {{ c.prontos }}{% endif %}</span>

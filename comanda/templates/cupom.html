@@ -21,6 +21,7 @@
       <b>{{ 'CONFERÊNCIA DE CONTA' if comanda.status == 'aberta' else ('CANCELADA' if comanda.status == 'cancelada' else 'RECIBO') }}</b>
       <div>Comanda {{ comanda.numero }}{% if comanda.mesa %} · Mesa {{ comanda.mesa }}{% endif %}</div>
       {% if comanda.cliente %}<div>{{ comanda.cliente }}</div>{% endif %}
+      {% if comanda.garcom_nome %}<div>Atendido por {{ comanda.garcom_nome }}</div>{% endif %}
       <div>{{ comanda.aberta_em|data_hora }}{% if comanda.fechada_em %} – {{ comanda.fechada_em|hora }}{% endif %}</div>
     </div>
     <div class="linha-tracejada"></div>

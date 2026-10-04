@@ -98,7 +98,8 @@ def exportar():
     de, ate = intervalo_utc(inicio, fim)
     conexao = db.obter()
     comandas = conexao.execute(
-        "SELECT c.*, GROUP_CONCAT(p.forma || ':' || p.valor_centavos, ' ') AS pagamentos FROM comandas c "
+        "SELECT c.*, GROUP_CONCAT(p.forma || ':' || p.valor_centavos, ' ') AS pagamentos, "
+        "(SELECT usuario FROM usuarios WHERE id = c.garcom_id) AS garcom_nome FROM comandas c "
         "LEFT JOIN pagamentos p ON p.comanda_id = c.id "
         "WHERE c.status != 'aberta' AND c.fechada_em >= ? AND c.fechada_em < ? GROUP BY c.id ORDER BY c.fechada_em",
         (de, ate),
@@ -106,14 +107,14 @@ def exportar():
     saida = io.StringIO()
     # Ponto e vírgula e vírgula decimal: abre direto no Excel em português.
     escritor = csv.writer(saida, delimiter=";")
-    escritor.writerow(["comanda", "mesa", "cliente", "situação", "aberta em", "fechada em", "desconto", "total", "pagamentos"])
+    escritor.writerow(["comanda", "mesa", "cliente", "garçom", "situação", "aberta em", "fechada em", "desconto", "total", "pagamentos"])
     for c in comandas:
         pagamentos = " ".join(
             f"{FORMAS.get(forma, forma)} {entrada_reais(int(valor))}"
             for forma, _, valor in (p.partition(":") for p in (c["pagamentos"] or "").split())
         )
         escritor.writerow([
-            c["numero"], c["mesa"] or "", c["cliente"] or "", c["status"], data_hora(c["aberta_em"]),
+            c["numero"], c["mesa"] or "", c["cliente"] or "", c["garcom_nome"] or "", c["status"], data_hora(c["aberta_em"]),
             data_hora(c["fechada_em"]), entrada_reais(c["desconto_centavos"]), entrada_reais(c["total_centavos"] or 0),
             pagamentos if c["status"] == "fechada" else (c["motivo_cancelamento"] or ""),
         ])

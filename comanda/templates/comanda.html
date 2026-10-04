@@ -7,6 +7,7 @@
       <h2>Comanda {{ comanda.numero }}
         {% if comanda.status == 'fechada' %}<span class="selo">fechada</span>{% elif comanda.status == 'cancelada' %}<span class="selo fora">cancelada</span>{% endif %}</h2>
       <div class="dica">{% if comanda.mesa %}Mesa {{ comanda.mesa }} · {% endif %}{% if comanda.cliente %}{{ comanda.cliente }} · {% endif %}aberta às {{ comanda.aberta_em|hora }}</div>
+      <div class="garcom-da-comanda">Garçom: <b>{{ comanda.garcom_nome or '—' }}</b></div>
     </div>
     <div class="total-grande" id="regiao-total" data-atualizar>{{ contas.subtotal|reais }}</div>
   </div>
@@ -17,11 +18,15 @@
   </div>
   {% if comanda.status == 'aberta' %}
   <details>
-    <summary>Mesa e cliente</summary>
+    <summary>Mesa, cliente e garçom</summary>
     <form method="post" action="{{ url_for('comandas.alterar_dados', comanda_id=comanda.id) }}" class="linha">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <div><label>Mesa</label><input type="text" name="mesa" maxlength="20" value="{{ comanda.mesa or '' }}"></div>
       <div><label>Cliente</label><input type="text" name="cliente" maxlength="60" value="{{ comanda.cliente or '' }}"></div>
+      {% if garcons %}
+      <div><label>Garçom</label><select name="garcom_id"><option value="">— ninguém —</option>
+        {% for p in garcons %}<option value="{{ p.id }}" {{ 'selected' if p.id == comanda.garcom_id }}>{{ p.usuario }}</option>{% endfor %}</select></div>
+      {% endif %}
       <div class="fixo"><button type="submit" class="secundario">Salvar</button></div>
     </form>
   </details>

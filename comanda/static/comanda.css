@@ -214,3 +214,4 @@ table.permissoes select { min-width: 150px; }
 .autorizar-tipo { display: grid; gap: 10px; }
 .autorizar-tipo label { display: flex; gap: 8px; align-items: flex-start; }
 .autorizar-tipo input.minutos-autorizacao { width: 90px; display: inline-block; }
+.garcom-da-comanda { margin-top: 4px; font-size: .95rem; }

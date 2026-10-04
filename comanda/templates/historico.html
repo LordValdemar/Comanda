@@ -12,11 +12,12 @@
   <h2>Fechadas e canceladas ({{ comandas|length }})</h2>
   {% if not comandas %}<p class="dica">Nenhuma comanda neste período.</p>{% endif %}
   <div class="tabela-rolagem"><table>
-    <tr><th>Comanda</th><th>Mesa / cliente</th><th>Fechada</th><th>Caixa</th><th class="numero">Total</th></tr>
+    <tr><th>Comanda</th><th>Mesa / cliente</th><th>Garçom</th><th>Fechada</th><th>Caixa</th><th class="numero">Total</th></tr>
     {% for c in comandas %}
     <tr {% if c.status == 'cancelada' %}class="apagado"{% endif %}>
       <td><a href="{{ url_for('comandas.cupom', comanda_id=c.id) }}">{{ c.numero }}</a>{% if c.status == 'cancelada' %} <span class="selo fora">cancelada</span>{% endif %}</td>
       <td>{{ c.mesa or '' }}{% if c.mesa and c.cliente %} · {% endif %}{{ c.cliente or '' }}</td>
+      <td>{{ c.garcom_nome or '' }}</td>
       <td>{{ c.fechada_em|data_hora }}</td>
       <td>{{ c.fechada_por_nome or '' }}{% if c.autorizacao %} <span class="dica">({{ c.autorizacao }})</span>{% endif %}</td>
       <td class="numero">{{ (c.total_centavos or 0)|reais }}</td>
