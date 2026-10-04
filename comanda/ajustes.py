@@ -1,9 +1,10 @@
 """Ajustes do estabelecimento (dados e logo do cupom, taxa de serviço) e backup pelo navegador."""
 
-import base64
 import os
 
 from flask import Blueprint, current_app, flash, redirect, render_template, request, send_file, url_for
+
+from src.domain.empresas import LOGO_MAX_BYTES, CadastroInvalido, ler_logo
 
 from . import backup, db
 from .auth import papel_exigido
@@ -12,8 +13,6 @@ from .comandas import taxa_padrao
 
 bp = Blueprint("ajustes", __name__, url_prefix="/ajustes")
 
-LOGO_MAX_BYTES = 300 * 1024  # o logo vai junto em cada cupom: pequeno imprime melhor e mais rápido
-TIPOS_DE_LOGO = {b"\x89PNG\r\n\x1a\n": "image/png", b"\xff\xd8\xff": "image/jpeg"}
 # Campos de texto do cupom: (chave, tamanho máximo).
 CAMPOS = (("nome_estabelecimento", 80), ("cnpj", 20), ("email", 80), ("endereco", 160), ("telefone", 40),
           ("local", 60), ("rodape_cupom", 160))
@@ -26,17 +25,6 @@ def dados_da_loja():
     dados["rodape_cupom"] = db.ler_config("rodape_cupom", "Obrigado pela preferência!")
     dados["logo"] = db.ler_config("logo")
     return dados
-
-
-def _ler_logo(arquivo):
-    """PNG ou JPG pequeno → data URI (guardado nas configurações). Erro em texto, se não servir."""
-    conteudo = arquivo.read(LOGO_MAX_BYTES + 1)
-    if len(conteudo) > LOGO_MAX_BYTES:
-        return None, "O logo pode ter até 300 KB. Diminua a imagem e envie de novo."
-    tipo = next((t for inicio, t in TIPOS_DE_LOGO.items() if conteudo.startswith(inicio)), None)
-    if tipo is None:
-        return None, "O logo precisa ser uma imagem PNG ou JPG."
-    return f"data:{tipo};base64,{base64.b64encode(conteudo).decode()}", None
 
 
 @bp.route("/", methods=["GET", "POST"])
@@ -56,9 +44,10 @@ def pagina():
             return redirect(url_for("ajustes.pagina"))
         arquivo = request.files.get("logo")
         if arquivo and arquivo.filename:
-            logo, erro = _ler_logo(arquivo)
-            if erro:
-                flash(erro, "erro")
+            try:   # PNG ou JPG até 300 KB (regra do núcleo): o logo vai junto em cada cupom
+                logo = ler_logo(arquivo.read(LOGO_MAX_BYTES + 1))
+            except CadastroInvalido as erro:
+                flash(str(erro), "erro")
                 return redirect(url_for("ajustes.pagina"))
             db.gravar_config("logo", logo)
         for chave, tamanho in CAMPOS:
