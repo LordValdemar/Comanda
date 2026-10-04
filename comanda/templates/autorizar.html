@@ -4,37 +4,74 @@
 {% block conteudo %}
 <section>
   <h2>Autorizar alguém da equipe</h2>
-  {% if not codigo %}
-    <p>O que você vai liberar? Aparece um QR code: a pessoa lê com o celular dela e fica liberada por {{ minutos }} minutos.</p>
+  {% if not funcao %}
+    <p>O que você vai liberar?</p>
     <div class="autorizar-escolha">
       {% for f in funcoes %}
         <a class="botao grande" href="{{ url_for('permissoes.autorizar', funcao=f) }}">{{ FUNCOES[f].nome }}</a>
       {% endfor %}
     </div>
+  {% elif not codigo %}
+    <p class="autorizacao-funcao">{{ FUNCOES[funcao].nome }}</p>
+    <form method="get" class="autorizar-tipo">
+      <input type="hidden" name="funcao" value="{{ funcao }}">
+      <label class="marcar"><input type="radio" name="modo" value="uma" checked>
+        <span><b>Uma vez só</b><br><span class="dica">Vale para uma ação{% if funcao == 'fechar_conta' %} (fechar uma conta){% endif %}; depois precisa de outra autorização.</span></span></label>
+      <label class="marcar"><input type="radio" name="modo" value="minutos">
+        <span><b>Por um tempo</b><br><span class="dica">Durante
+          <input type="number" name="minutos" min="1" max="{{ max_minutos }}" value="{{ minutos }}" class="minutos-autorizacao" aria-label="Minutos"> minutos.</span></span></label>
+      <label class="marcar"><input type="radio" name="modo" value="sempre">
+        <span><b>Sem prazo</b><br><span class="dica">Até você ou o administrador encerrar, nesta página.</span></span></label>
+      <div class="acoes">
+        <button type="submit">Mostrar o QR code</button>
+        <a class="botao secundario" href="{{ url_for('permissoes.autorizar') }}">Outra função</a>
+      </div>
+    </form>
   {% else %}
     <div id="autorizacao" class="autorizacao-qr" data-situacao="{{ url_for('permissoes.situacao', codigo=codigo) }}" data-validade="{{ validade }}">
-      <p class="autorizacao-funcao">{{ FUNCOES[funcao].nome }}</p>
+      <p class="autorizacao-funcao">{{ FUNCOES[funcao].nome }} · {{ descrever({'modo': modo, 'minutos': minutos}) }}</p>
       <img src="{{ qr }}" alt="QR code de autorização" width="260" height="260">
       <p>Ou a pessoa digita o código: <span class="selo codigo-autorizacao">{{ codigo }}</span></p>
       <p class="dica" id="autorizacao-estado">Vale por <span id="autorizacao-tempo">2:00</span> e para uma leitura só.</p>
       <div id="autorizacao-usado" hidden><p class="aviso ok">✔ Liberado para <b id="autorizacao-quem"></b>.</p></div>
       <div class="acoes">
-        <a class="botao" href="{{ url_for('permissoes.autorizar', funcao=funcao) }}">Novo código</a>
+        <a class="botao" href="{{ url_for('permissoes.autorizar', funcao=funcao, modo=modo, minutos=minutos) }}">Novo código</a>
         <a class="botao secundario" href="{{ url_for('permissoes.autorizar') }}">Outra função</a>
       </div>
     </div>
   {% endif %}
 </section>
 
+{% if ativas %}
+<section>
+  <h2>Liberações que ainda valem</h2>
+  <div class="tabela-rolagem">
+  <table>
+    <thead><tr><th>Para quem</th><th>Função</th><th>Tipo</th><th>Quem autorizou</th><th></th></tr></thead>
+    <tbody>
+      {% for a in ativas %}
+        <tr><td>{{ a.quem_usou or '—' }}</td><td>{{ FUNCOES[a.funcao].nome if a.funcao in FUNCOES else a.funcao }}</td>
+          <td>{{ descrever(a) }}{% if a.modo == 'minutos' and a.ate %} <span class="dica">(até {{ a.ate|data_hora('%H:%M') }})</span>{% endif %}</td>
+          <td>{{ a.quem_autorizou or '—' }}</td>
+          <td><form action="{{ url_for('permissoes.encerrar', liberacao_id=a.id) }}" method="post" data-confirmar="Encerrar a liberação de {{ a.quem_usou }}?">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="perigo">Encerrar</button></form></td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+</section>
+{% endif %}
+
 {% if recentes %}
 <section>
   <h2>Últimas autorizações</h2>
   <div class="tabela-rolagem">
   <table>
-    <thead><tr><th>Quando</th><th>Função</th><th>Quem autorizou</th><th>Para quem</th></tr></thead>
+    <thead><tr><th>Quando</th><th>Função</th><th>Tipo</th><th>Quem autorizou</th><th>Para quem</th></tr></thead>
     <tbody>
       {% for r in recentes %}
         <tr><td>{{ r.usado_em|data_hora }}</td><td>{{ FUNCOES[r.funcao].nome if r.funcao in FUNCOES else r.funcao }}</td>
+          <td>{{ descrever(r) }}{% if r.revogada_em %} <span class="selo fora">encerrada</span>{% elif r.consumida_em %} <span class="selo">usada</span>{% endif %}</td>
           <td>{{ r.quem_autorizou or '—' }}</td><td>{{ r.quem_usou or '—' }}</td></tr>
       {% endfor %}
     </tbody>

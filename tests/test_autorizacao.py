@@ -1,7 +1,6 @@
 """Tela de Permissões e autorização por QR code (ex.: o caixa libera o garçom a fechar a conta)."""
 
 import re
-import time
 
 from comanda import db, permissoes
 from conftest import abrir_comanda, criar_pessoa, criar_produto, csrf
@@ -26,8 +25,8 @@ def consultar(app, sql, *parametros):
         return db.obter().execute(sql, parametros).fetchall()
 
 
-def codigo_do_qr(cliente, funcao):
-    pagina = cliente.get(f"/autorizar?funcao={funcao}").get_data(as_text=True)
+def codigo_do_qr(cliente, funcao, modo="minutos", minutos=5):
+    pagina = cliente.get(f"/autorizar?funcao={funcao}&modo={modo}&minutos={minutos}").get_data(as_text=True)
     return re.search(r'class="selo codigo-autorizacao">([A-Z0-9]{8})<', pagina).group(1)
 
 
@@ -74,8 +73,10 @@ def test_garcom_fecha_conta_com_o_qr_do_caixa(logado, app):
 
     joana.get(f"/autorizacao/{codigo}")                     # uma leitura só
     assert joana.get(f"/comandas/{comanda_id}/fechar").status_code == 403
-    with maria.session_transaction() as sessao:
-        sessao["autorizacoes"]["fechar_conta"]["ate"] = time.time() - 1
+    with app.app_context():
+        conexao = db.obter()
+        with conexao:
+            conexao.execute("UPDATE autorizacoes SET ate = '2020-01-01 00:00:00' WHERE usado_por IS NOT NULL")
     assert maria.get(f"/comandas/{comanda_id}/fechar").status_code == 403
 
     vencido = codigo_do_qr(caixa, "fechar_conta")
@@ -113,3 +114,28 @@ def test_quem_esta_em_nao_nem_com_autorizacao(logado, app):
     assert maria.get("/autorizar").status_code == 403
     codigo = codigo_do_qr(caixa, "fechar_conta")
     assert "nem com autorização" in maria.get(f"/autorizacao/{codigo}", follow_redirects=True).get_data(as_text=True)
+
+
+def test_uma_vez_sem_prazo_e_historico(logado, app):
+    primeira = comanda_com_lanche(logado)
+    segunda = abrir_comanda(logado, 6)
+    criar_pessoa(app, "maria", "garcom")
+    criar_pessoa(app, "caixa", "caixa")
+    permitir(logado, **{"fechar_conta.garcom": permissoes.AUTORIZACAO})
+    maria, caixa = pessoa(app, "maria"), pessoa(app, "caixa")
+
+    maria.get(f"/autorizacao/{codigo_do_qr(caixa, 'fechar_conta', 'uma')}")
+    assert "Ainda falta receber" in post(maria, f"/comandas/{primeira}/fechar", {"acao": "finalizar"},
+                                         follow_redirects=True).get_data(as_text=True)
+    post(maria, f"/comandas/{primeira}/fechar", {"acao": "pagar", "forma": "pix", "valor": "22"})
+    post(maria, f"/comandas/{primeira}/fechar", {"acao": "finalizar"})
+    assert consultar(app, "SELECT status FROM comandas WHERE id = ?", primeira)[0][0] == "fechada"
+    assert maria.get(f"/comandas/{segunda}/fechar").status_code == 403
+    assert "autorizado por caixa" in logado.get("/comandas/historico").get_data(as_text=True)
+
+    maria.get(f"/autorizacao/{codigo_do_qr(caixa, 'fechar_conta', 'sempre')}")
+    maria = pessoa(app, "maria")
+    assert maria.get(f"/comandas/{segunda}/fechar").status_code == 200
+    liberacao = consultar(app, "SELECT id FROM autorizacoes WHERE modo = 'sempre'")[0][0]
+    post(caixa, f"/autorizar/{liberacao}/encerrar")
+    assert maria.get(f"/comandas/{segunda}/fechar").status_code == 403

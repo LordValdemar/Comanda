@@ -211,3 +211,6 @@ table.permissoes select { min-width: 150px; }
 .autorizacao-qr img.vencido { opacity: .15; }
 .autorizacao-funcao { font-size: 1.2rem; font-weight: 700; }
 .codigo-autorizacao { font-size: 1.1rem; letter-spacing: .12em; font-family: monospace; }
+.autorizar-tipo { display: grid; gap: 10px; }
+.autorizar-tipo label { display: flex; gap: 8px; align-items: flex-start; }
+.autorizar-tipo input.minutos-autorizacao { width: 90px; display: inline-block; }

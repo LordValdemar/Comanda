@@ -18,7 +18,7 @@
       <td><a href="{{ url_for('comandas.cupom', comanda_id=c.id) }}">{{ c.numero }}</a>{% if c.status == 'cancelada' %} <span class="selo fora">cancelada</span>{% endif %}</td>
       <td>{{ c.mesa or '' }}{% if c.mesa and c.cliente %} · {% endif %}{{ c.cliente or '' }}</td>
       <td>{{ c.fechada_em|data_hora }}</td>
-      <td>{{ c.fechada_por_nome or '' }}</td>
+      <td>{{ c.fechada_por_nome or '' }}{% if c.autorizacao %} <span class="dica">({{ c.autorizacao }})</span>{% endif %}</td>
       <td class="numero">{{ (c.total_centavos or 0)|reais }}</td>
     </tr>
     {% endfor %}

@@ -391,9 +391,9 @@ def fechamento(comanda_id):
                 if resposta is not None:
                     return resposta
             elif acao == "pagar":
-                troco = registrar_pagamento(
-                    conexao, comanda, request.form.get("forma", ""), ler_reais(request.form.get("valor")), g.usuario["id"]
-                )
+                forma, valor = request.form.get("forma", ""), ler_reais(request.form.get("valor"))
+                troco = registrar_pagamento(conexao, comanda, forma, valor, g.usuario["id"])
+                db.anotar_autorizacao(conexao, "pagamento", f"{FORMAS.get(forma, forma)} {reais(valor)}", comanda_id)
                 if troco:
                     flash(f"Troco: {reais(troco)}", "ok")
             elif acao == "remover_pagamento":
@@ -410,6 +410,7 @@ def fechamento(comanda_id):
                                    f"{FORMAS[pagamento['forma']]} {reais(pagamento['valor_centavos'])}", comanda_id)
             elif acao == "finalizar":
                 fechar(conexao, comanda, g.usuario["id"])
+                db.anotar_autorizacao(conexao, "fechar conta", "", comanda_id)
                 flash(f"Comanda {comanda['numero']} fechada. O cartão já pode ser usado de novo.", "ok")
                 return redirect(url_for("comandas.cupom", comanda_id=comanda_id, imprimir=1))
             else:
@@ -546,7 +547,9 @@ def historico():
     inicio, fim = ler_periodo(request.args, padrao=hoje_local())
     de, ate = intervalo_utc(inicio, fim)
     comandas = db.obter().execute(
-        "SELECT c.*, u.usuario AS fechada_por_nome FROM comandas c LEFT JOIN usuarios u ON u.id = c.fechada_por "
+        "SELECT c.*, u.usuario AS fechada_por_nome, (SELECT a.detalhe FROM auditoria a WHERE a.comanda_id = c.id "
+        "AND a.acao = 'fechar conta' ORDER BY a.id DESC LIMIT 1) AS autorizacao "
+        "FROM comandas c LEFT JOIN usuarios u ON u.id = c.fechada_por "
         "WHERE c.status != 'aberta' AND c.fechada_em >= ? AND c.fechada_em < ? ORDER BY c.fechada_em DESC",
         (de, ate),
     ).fetchall()

@@ -152,6 +152,16 @@ MIGRACOES = [
     );
     CREATE INDEX autorizacoes_usadas ON autorizacoes(usado_em);
     """,
+    # 7 - a autorização pode valer uma vez só, por um tempo ou sem prazo (até alguém encerrar).
+    """
+    ALTER TABLE autorizacoes ADD COLUMN modo TEXT NOT NULL DEFAULT 'minutos';
+    ALTER TABLE autorizacoes ADD COLUMN minutos INTEGER NOT NULL DEFAULT 5;
+    ALTER TABLE autorizacoes ADD COLUMN ate TEXT;
+    ALTER TABLE autorizacoes ADD COLUMN consumida_em TEXT;
+    ALTER TABLE autorizacoes ADD COLUMN revogada_em TEXT;
+    ALTER TABLE autorizacoes ADD COLUMN encerrada_por INTEGER REFERENCES usuarios(id) ON DELETE SET NULL;
+    CREATE INDEX autorizacoes_liberadas ON autorizacoes(usado_por, funcao);
+    """,
 ]
 
 
@@ -206,6 +216,20 @@ def gravar_config(chave, valor):
         )
 
 
+def _com_autorizacao(detalhe):
+    """Quem fez com autorização por QR code: o nome de quem autorizou fica no histórico."""
+    if not g.get("autorizado_por"):
+        return detalhe
+    return f"{detalhe} (autorizado por {g.autorizado_por})" if detalhe else f"autorizado por {g.autorizado_por}"
+
+
+def anotar_autorizacao(conexao, acao, detalhe, comanda_id):
+    """Registra no histórico uma ação feita com autorização (as outras não precisam de registro extra)."""
+    if g.get("autorizado_por"):
+        with conexao:
+            auditar(conexao, acao, detalhe, comanda_id)
+
+
 def auditar(conexao, acao, detalhe="", comanda_id=None, usuario_id=None):
     """Registra uma ação. Chame dentro da mesma transação da mudança."""
     if usuario_id is None and getattr(g, "usuario", None) is not None:
@@ -213,5 +237,5 @@ def auditar(conexao, acao, detalhe="", comanda_id=None, usuario_id=None):
     conexao.execute(
         "INSERT INTO auditoria (usuario_id, comanda_id, acao, detalhe) VALUES (?, ?, ?, ?)",
         (usuario_id, comanda_id, acao,
-         f"{detalhe} (autorizado por {g.autorizado_por})" if g.get("autorizado_por") else detalhe),
+         _com_autorizacao(detalhe)),
     )
