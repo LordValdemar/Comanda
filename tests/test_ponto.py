@@ -255,3 +255,26 @@ def test_garcom_que_muda_de_papel_perde_o_fechar_conta(logado, app):
     post(logado, f"/usuarios/{maria}", {"acao": "papel", "papel": "garcom"})
     linha = consultar(app, "SELECT papel, fecha_conta FROM usuarios WHERE id = ?", maria)[0]
     assert (linha["papel"], linha["fecha_conta"]) == ("garcom", 0)
+
+
+def test_codigo_digitado_quando_a_camera_nao_abre(logado, app):
+    ligar_ponto(logado)
+    pagina = logado.get("/ponto/equipe").get_data(as_text=True)
+    api = re.search(r'<p class="endereco">http://localhost(/ponto/quiosque/[^<]+)</p>', pagina).group(1)
+    api = api.replace("/ponto/quiosque/", "/api/ponto/quiosque/")
+    criar_pessoa(app, "joao", "garcom")
+    criar_pessoa(app, "maria", "caixa")
+    joao, maria = aparelho(app, "joao"), aparelho(app, "maria")
+    assert "Digite o código de 6 letras" in joao.get("/ponto").get_data(as_text=True)
+
+    codigo = app.test_client().get(api).get_json()["codigo"]
+    assert "QR code lido" in post(joao, "/ponto/codigo", {"codigo": codigo.lower()}, follow_redirects=True).get_data(as_text=True)
+    post(joao, "/ponto/entrada")
+    assert consultar(app, "SELECT COUNT(*) FROM ponto_registros WHERE saida IS NULL")[0][0] == 1
+
+    assert "Código errado" in post(maria, "/ponto/codigo", {"codigo": codigo}, follow_redirects=True).get_data(as_text=True)
+    for _ in range(ponto.MAX_CODIGOS_ERRADOS):
+        post(maria, "/ponto/codigo", {"codigo": "AAAAAA"})
+    certo = app.test_client().get(api).get_json()["codigo"]
+    assert "Muitos códigos errados" in post(maria, "/ponto/codigo", {"codigo": certo},
+                                            follow_redirects=True).get_data(as_text=True)

@@ -11,9 +11,13 @@ from comanda import auth, create_app, db  # noqa: E402
 
 @pytest.fixture(autouse=True)
 def limpar_bloqueios():
+    from comanda import ponto
+
     auth._tentativas.clear()
+    ponto._codigos_errados.clear()
     yield
     auth._tentativas.clear()
+    ponto._codigos_errados.clear()
 
 
 @pytest.fixture

@@ -7,6 +7,7 @@
   const qr = document.getElementById("qr");
   const aviso = document.getElementById("aviso");
   const relogio = document.getElementById("relogio");
+  const codigo = document.getElementById("codigo");
   const AVISO_PADRAO = "Cada código vale para uma pessoa. Depois de ler, aguarde o próximo.";
   let versao = "";
   let espera = null;
@@ -22,6 +23,7 @@
       const dados = await resposta.json();
       if (!dados.ativo) {
         qr.removeAttribute("src");
+        codigo.textContent = "";
         versao = "";
         aviso.textContent = "O controle de ponto está desligado.";
         aviso.className = "aviso erro";
@@ -30,6 +32,7 @@
           // Mudou a geração (não só o horário): alguém acabou de usar o código.
           if (versao && geracao(dados.versao) !== geracao(versao)) fimDoAvisoUsado = Date.now() + 5000;
           qr.src = dados.qr;
+          codigo.textContent = dados.codigo || "";
           versao = dados.versao;
         }
         if (Date.now() < fimDoAvisoUsado) {

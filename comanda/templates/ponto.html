@@ -21,6 +21,12 @@
           <button type="button" id="fechar-camera" class="secundario">Fechar a câmera</button>
         </div>
       </div>
+      <form action="{{ url_for('ponto.digitar_codigo') }}" method="post" class="linha ponto-digitar">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div><label for="codigo-ponto">Câmera não abre? Digite o código de 6 letras que aparece embaixo do QR</label>
+          <input type="text" id="codigo-ponto" name="codigo" maxlength="6" autocapitalize="characters" autocomplete="off" required></div>
+        <div class="fixo"><button type="submit" class="secundario">Usar código</button></div>
+      </form>
     {% endif %}
     <div class="acoes">
       <a class="botao secundario" href="{{ inicio }}">Voltar ao trabalho</a>
@@ -50,6 +56,12 @@
           <button type="button" id="fechar-camera" class="secundario">Fechar a câmera</button>
         </div>
       </div>
+      <form action="{{ url_for('ponto.digitar_codigo') }}" method="post" class="linha ponto-digitar">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div><label for="codigo-ponto">Câmera não abre? Digite o código de 6 letras que aparece embaixo do QR</label>
+          <input type="text" id="codigo-ponto" name="codigo" maxlength="6" autocapitalize="characters" autocomplete="off" required></div>
+        <div class="fixo"><button type="submit" class="secundario">Usar código</button></div>
+      </form>
       <p class="dica">Também dá para usar o app Câmera do celular: aponte para o QR e toque no link que aparecer.</p>
     {% elif no_horario %}
       <p>{{ 'QR code lido. ' if presenca else '' }}Registre a entrada para começar a usar o sistema.</p>
