@@ -43,16 +43,23 @@
 
 <section id="regiao-abertas" data-atualizar>
   <h2>Abertas ({{ abertas|length }})</h2>
+  {% if abertas %}<p class="legenda-comandas"><span class="cor cartao-pronto"></span> pronto para servir
+    <span class="cor cartao-preparando"></span> preparando <span class="cor cartao-aguardando"></span> aguardando
+    <span class="cor"></span> tudo entregue</p>{% endif %}
   {% if not abertas %}<p class="dica">Nenhuma comanda aberta.</p>{% endif %}
   <div class="grade-comandas">
     {% for c in abertas %}
-    <a class="cartao-comanda {% if c.prontos %}tem-pronto{% endif %}" href="{{ url_for('comandas.detalhe', comanda_id=c.id) }}">
+    {# A cor mostra o que a comanda precisa: pronto para servir > preparando > aguardando; tudo entregue, cor normal. #}
+    {% set estado = 'pronto' if c.prontos else ('preparando' if c.preparando else ('aguardando' if c.aguardando else '')) %}
+    <a class="cartao-comanda {% if estado %}cartao-{{ estado }}{% endif %}" href="{{ url_for('comandas.detalhe', comanda_id=c.id) }}">
       <span class="numero-comanda">{{ c.numero }}</span>
       <span>{% if c.mesa %}Mesa {{ c.mesa }}{% endif %}{% if c.mesa and c.cliente %} · {% endif %}{{ c.cliente or '' }}</span>
       {% if c.garcom_nome %}<span class="dica">👤 {{ c.garcom_nome }}</span>{% endif %}
       <b>{{ c.consumo|reais }}</b>
-      <span class="dica">há {{ c.aberta_em|minutos }} min
-        {% if c.na_cozinha %} · 🍳 {{ c.na_cozinha }}{% endif %}{% if c.prontos %} · 🔔 {{ c.prontos }}{% endif %}</span>
+      {% if c.prontos %}<span class="situacao-comanda">🔔 {{ c.prontos }} pronto{{ 's' if c.prontos > 1 }} para servir</span>{% endif %}
+      {% if c.preparando %}<span class="situacao-comanda">🍳 {{ c.preparando }} preparando</span>{% endif %}
+      {% if c.aguardando %}<span class="situacao-comanda">⏳ {{ c.aguardando }} aguardando a cozinha</span>{% endif %}
+      <span class="dica">há {{ c.aberta_em|minutos }} min</span>
     </a>
     {% endfor %}
   </div>

@@ -62,7 +62,6 @@ details.produto summary > span { flex: 1; }
 .grade-comandas { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
 .cartao-comanda { display: flex; flex-direction: column; gap: 3px; padding: 12px; border-radius: 10px; background: #f6f8fb; border: 2px solid #e3e7ef; color: inherit; text-decoration: none; min-height: 110px; }
 .cartao-comanda:hover { border-color: #2f6fed; }
-.cartao-comanda.tem-pronto { border-color: #22a447; background: #effbf2; }
 .numero-comanda { font-size: 1.8rem; font-weight: 700; line-height: 1; }
 .destaque-pronto { border-left: 5px solid #22a447; }
 .linha-item { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 10px 0; border-top: 1px solid #eee; }
@@ -215,3 +214,17 @@ table.permissoes select { min-width: 150px; }
 .autorizar-tipo label { display: flex; gap: 8px; align-items: flex-start; }
 .autorizar-tipo input.minutos-autorizacao { width: 90px; display: inline-block; }
 .garcom-da-comanda { margin-top: 4px; font-size: .95rem; }
+/* Comandas abertas com as cores da cozinha: o garçom vê de longe qual mesa precisa dele. */
+.cartao-comanda { border-top-width: 6px; }
+.cartao-comanda.cartao-pronto { border-color: #22a447; background: #d6f5df; }
+.cartao-comanda.cartao-preparando { border-color: #2f6fed; background: #dce8ff; }
+.cartao-comanda.cartao-aguardando { border-color: #c77700; background: #fff1d6; }
+.situacao-comanda { font-size: .85rem; font-weight: 600; }
+.cartao-pronto .situacao-comanda { color: #0f4d22; }
+.cartao-preparando .situacao-comanda { color: #123a8a; }
+.cartao-aguardando .situacao-comanda { color: #5c3700; }
+.legenda-comandas { display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: center; font-size: .85rem; color: #4a5368; margin: -4px 0 10px; }
+.legenda-comandas .cor { display: inline-block; width: 14px; height: 14px; border-radius: 4px; border: 2px solid #e3e7ef; background: #f6f8fb; vertical-align: middle; }
+.legenda-comandas .cor.cartao-pronto { border-color: #22a447; background: #d6f5df; }
+.legenda-comandas .cor.cartao-preparando { border-color: #2f6fed; background: #dce8ff; }
+.legenda-comandas .cor.cartao-aguardando { border-color: #c77700; background: #fff1d6; }

@@ -1,3 +1,5 @@
+import re
+
 from comanda import db
 from conftest import abrir_comanda, criar_pessoa, criar_produto, entrar, postar
 
@@ -270,3 +272,26 @@ def test_garcom_que_atende_aparece_na_comanda(logado, app):
     assert "Atendido por joao" in logado.get(f"/comandas/{comanda_joao}/cupom").get_data(as_text=True)
     assert "<td>joao</td>" in logado.get("/comandas/historico").get_data(as_text=True)
     assert ";joao;" in logado.get("/relatorios/comandas.csv").get_data(as_text=True)
+
+
+def test_cor_da_comanda_segue_a_cozinha(logado, app):
+    lanche = criar_produto(logado, "X-Salada", "20,00")
+    lata = criar_produto(logado, "Refri", "6,00", cozinha=False)
+    comanda_id = abrir_comanda(logado, 8)
+
+    def cartao():
+        html = logado.get("/comandas/").get_data(as_text=True)
+        return re.search(r'class="cartao-comanda([^"]*)"', html).group(1).strip()
+
+    postar(logado, f"/comandas/{comanda_id}/itens", {f"qtd_{lata}": "1"})
+    assert cartao() == ""
+    postar(logado, f"/comandas/{comanda_id}/itens", {f"qtd_{lanche}": "1"})
+    assert cartao() == "cartao-aguardando"
+    item_id = logado.get("/api/cozinha").get_json()["comandas"][0]["itens"][0]["id"]
+    token = {"X-CSRF-Token": _csrf_cozinha(logado)}
+    logado.post(f"/api/cozinha/itens/{item_id}", data={"status": "preparando"}, headers=token)
+    assert cartao() == "cartao-preparando"
+    logado.post(f"/api/cozinha/itens/{item_id}", data={"status": "pronto"}, headers=token)
+    assert cartao() == "cartao-pronto"
+    postar(logado, f"/comandas/{comanda_id}/itens/{item_id}", {"acao": "entregue"})
+    assert cartao() == ""
