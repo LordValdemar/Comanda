@@ -19,13 +19,14 @@ import hmac
 import io
 import logging
 import time
-from datetime import date, timedelta
+from datetime import timedelta
 
 import segno
 from flask import Blueprint, Response, abort, flash, g, jsonify, redirect, render_template, request, session, url_for
 
 from src.domain.erros import NaoEncontrado
 from src.domain.horario import DIAS, Horario, HorarioInvalido, ler_dias, ler_hora
+from src.domain.periodo import Periodo
 from src.domain.ponto import MAX_CODIGOS_ERRADOS, QR_TROCA_SEGUNDOS, ErroDePonto, Funcionario, ServicoDePonto
 from src.domain.tentativas import LimiteDeTentativas
 from src.infrastructure.sqlite import RepositorioDePontoSQLite
@@ -273,19 +274,9 @@ def quiosque_api(codigo):
 
 def _ler_periodo():
     hoje = hoje_local()
-
-    def ler(nome, padrao):
-        try:
-            return date.fromisoformat(request.args.get(nome, ""))
-        except ValueError:
-            return padrao
-
-    inicio, fim = ler("de", hoje - timedelta(days=6)), ler("ate", hoje)
-    if fim < inicio:
-        inicio, fim = fim, inicio
-    if (fim - inicio).days >= MAX_DIAS_RELATORIO:
-        inicio = fim - timedelta(days=MAX_DIAS_RELATORIO - 1)
-    return inicio, fim
+    periodo = Periodo.ler(request.args.get("de"), request.args.get("ate"), hoje - timedelta(days=6), hoje,
+                          MAX_DIAS_RELATORIO)
+    return periodo.inicio, periodo.fim
 
 
 @bp.route("/ponto/equipe")

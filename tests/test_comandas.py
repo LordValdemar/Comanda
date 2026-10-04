@@ -235,8 +235,8 @@ def test_taxa_arredonda_meio_centavo_para_cima_e_relatorio_bate_com_o_cupom(loga
         comanda = db.obter().execute("SELECT * FROM comandas WHERE id = ?", (comanda_id,)).fetchone()
         assert (comanda["status"], comanda["total_centavos"], comanda["taxa_centavos"]) == ("fechada", 1106, 101)
         hoje = formatos.hoje_local()
-        resumo = relatorios.resumo(db.obter(), hoje, hoje)
-    assert resumo["faturamento"] == 1106 and resumo["taxa"] == 101
+        resumo = relatorios.relatorio().resumo(*formatos.intervalo_utc(hoje, hoje))
+    assert resumo.faturamento == 1106 and resumo.taxa == 101
 
 
 def test_garcom_que_atende_aparece_na_comanda(logado, app):
