@@ -8,10 +8,10 @@
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <p class="dica">Os dados aparecem no topo de cada conferência e recibo. Deixe em branco o que não quiser mostrar.</p>
     <div class="campo"><label>Nome (aparece no topo e no cupom)</label><input type="text" name="nome_estabelecimento" maxlength="80" value="{{ dados.nome_estabelecimento }}"></div>
-    <div class="campo"><label>CNPJ</label><input type="text" name="cnpj" maxlength="20" inputmode="numeric" placeholder="00.000.000/0000-00" value="{{ dados.cnpj }}"></div>
+    <div class="campo"><label>CNPJ</label><input type="text" name="cnpj" maxlength="20" inputmode="numeric" placeholder="00.000.000/0000-00" value="{{ dados.cnpj }}" data-mascara="documento"></div>
     <div class="campo"><label>E-mail</label><input type="email" name="email" maxlength="80" value="{{ dados.email }}"></div>
     <div class="campo"><label>Endereço</label><input type="text" name="endereco" maxlength="160" value="{{ dados.endereco }}"></div>
-    <div class="campo"><label>Telefone</label><input type="text" name="telefone" maxlength="40" inputmode="tel" value="{{ dados.telefone }}"></div>
+    <div class="campo"><label>Telefone</label><input type="text" name="telefone" maxlength="40" inputmode="tel" value="{{ dados.telefone }}" data-mascara="telefone"></div>
     <div class="campo"><label>Local / unidade <span class="dica">(ex.: Dom Pedro)</span></label><input type="text" name="local" maxlength="60" value="{{ dados.local }}"></div>
     <div class="campo"><label>Mensagem no fim do cupom</label><input type="text" name="rodape_cupom" maxlength="160" value="{{ dados.rodape_cupom }}"></div>
     <div class="campo">

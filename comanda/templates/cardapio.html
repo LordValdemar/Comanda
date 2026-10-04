@@ -6,7 +6,7 @@
   <form method="post" action="{{ url_for('cardapio.novo_produto') }}" class="linha">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <div class="u-b220"><label>Nome</label><input type="text" name="nome" required maxlength="80"></div>
-    <div><label>Preço (R$)</label><input type="text" name="preco" required inputmode="decimal" placeholder="0,00"></div>
+    <div><label>Preço (R$)</label><input type="text" name="preco" required inputmode="decimal" placeholder="0,00" data-mascara="dinheiro"></div>
     <div><label>Categoria</label>
       <select name="categoria_id"><option value="">— sem categoria —</option>{% for c in categorias %}<option value="{{ c.id }}">{{ c.nome }}</option>{% endfor %}</select>
     </div>
@@ -32,7 +32,7 @@
     <form method="post" action="{{ url_for('cardapio.alterar_produto', produto_id=p.id) }}" class="linha">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <div class="u-b220"><label>Nome</label><input type="text" name="nome" value="{{ p.nome }}" required maxlength="80"></div>
-      <div><label>Preço (R$)</label><input type="text" name="preco" value="{{ entrada_reais(p.preco_centavos) }}" required inputmode="decimal"></div>
+      <div><label>Preço (R$)</label><input type="text" name="preco" value="{{ entrada_reais(p.preco_centavos) }}" required inputmode="decimal" data-mascara="dinheiro"></div>
       <div><label>Categoria</label>
         <select name="categoria_id"><option value="">— sem categoria —</option>{% for c in categorias %}<option value="{{ c.id }}" {% if c.id == p.categoria_id %}selected{% endif %}>{{ c.nome }}</option>{% endfor %}</select>
       </div>
