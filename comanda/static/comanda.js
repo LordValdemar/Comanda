@@ -116,7 +116,20 @@
   // Cupom: botão de imprimir e impressão automática depois de fechar a conta.
   var imprimir = document.getElementById("imprimir");
   if (imprimir) {
-    imprimir.addEventListener("click", function () { window.print(); });
-    if (document.body.hasAttribute("data-imprimir")) window.addEventListener("load", function () { window.print(); });
+    // Impressora de bobina (papel contínuo): a "folha" tem 80 mm de largura e a altura do próprio cupom,
+    // assim ele sai inteiro, sem quebrar em duas páginas. (Regra adicionada pelo CSSOM: a CSP não deixa <style>.)
+    var ajustarPapel = function () {
+      var cupom = document.querySelector(".cupom");
+      var folha = Array.prototype.find.call(document.styleSheets, function (f) { return (f.href || "").indexOf("cupom.css") !== -1; });
+      if (!cupom || !folha) return;
+      var alturaMm = Math.ceil(cupom.getBoundingClientRect().height * 25.4 / 96) + 6;
+      try {
+        if (folha.ultimaRegraPapel !== undefined) folha.deleteRule(folha.ultimaRegraPapel);
+        folha.ultimaRegraPapel = folha.insertRule("@page { size: 80mm " + alturaMm + "mm; margin: 0; }", folha.cssRules.length);
+      } catch (erro) { /* navegador sem suporte: usa o papel escolhido na impressão */ }
+    };
+    window.addEventListener("beforeprint", ajustarPapel);
+    imprimir.addEventListener("click", function () { ajustarPapel(); window.print(); });
+    if (document.body.hasAttribute("data-imprimir")) window.addEventListener("load", function () { ajustarPapel(); window.print(); });
   }
 })();

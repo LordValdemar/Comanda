@@ -60,9 +60,9 @@
     </table>
     {% if pagamentos %}
     <div class="linha-tracejada"></div>
-    <table>
-      <tr><td>Condições de pagamento:</td><td class="valor">À vista</td></tr>
-      <tr><td>Formas de pagamento:</td><td class="valor">{{ formas_usadas|join(', ') }}</td></tr>
+    <div class="pagamento-linha"><span>Condições de pagamento:</span> <span>À vista</span></div>
+    <div class="pagamento-linha"><span>Formas de pagamento:</span> <span>{{ formas_usadas|join(', ') }}</span></div>
+    <table class="u-espaco-acima">
       {% if pagamentos|length > 1 or contas.troco %}
         {% for p in pagamentos %}<tr class="dica"><td>{{ formas[p.forma] }}</td><td class="valor">{{ p.recebido_centavos|reais }}</td></tr>{% endfor %}
       {% endif %}
