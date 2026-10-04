@@ -17,11 +17,11 @@
 
   {% if comanda.status == 'aberta' %}
   <details {% if contas.desconto or not comanda.cobrar_taxa %}open{% endif %}>
-    <summary>{{ 'Taxa de serviço e desconto' if pode('caixa') else 'Taxa de serviço' }}</summary>
+    <summary>{{ 'Taxa de serviço e desconto' if permite('desconto') else 'Taxa de serviço' }}</summary>
     <form method="post" class="linha">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <div class="fixo"><label class="marcar"><input type="checkbox" name="cobrar_taxa" {% if comanda.cobrar_taxa %}checked{% endif %}> Cobrar taxa de serviço</label></div>
-      {% if pode('caixa') %}<div><label>Desconto (R$)</label><input type="text" name="desconto" inputmode="decimal" value="{{ entrada_reais(comanda.desconto_centavos) }}"></div>{% endif %}
+      {% if permite('desconto') %}<div><label>Desconto (R$){% if not pode_funcao('desconto') %} <span class="dica">com autorização</span>{% endif %}</label><input type="text" name="desconto" inputmode="decimal" value="{{ entrada_reais(comanda.desconto_centavos) }}"></div>{% endif %}
       <div class="fixo"><button type="submit" name="acao" value="ajustar" class="secundario">Aplicar</button></div>
     </form>
   </details>

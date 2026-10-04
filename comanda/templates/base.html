@@ -19,12 +19,18 @@
         {% if pode('caixa', 'garcom') %}
           <a href="{{ url_for('comandas.lista') }}" {% if ep.startswith('comandas.') and ep != 'comandas.historico' %}class="atual"{% endif %}>Comandas</a>
         {% endif %}
-        {% if pode('cozinha', 'caixa') %}
+        {% if permite('cozinha') %}
           <a href="{{ url_for('cozinha.tela') }}" {% if ep == 'cozinha.tela' %}class="atual"{% endif %}>Cozinha</a>
         {% endif %}
-        {% if pode('caixa') %}
+        {% if permite('vendas') %}
           <a href="{{ url_for('comandas.historico') }}" {% if ep == 'comandas.historico' %}class="atual"{% endif %}>Fechadas</a>
           <a href="{{ url_for('relatorios.vendas') }}" {% if ep == 'relatorios.vendas' %}class="atual"{% endif %}>Relatórios</a>
+        {% endif %}
+        {% if permite('cardapio') and not pode('admin') %}
+          <a href="{{ url_for('cardapio.lista') }}" {% if ep.startswith('cardapio.') %}class="atual"{% endif %}>Cardápio</a>
+        {% endif %}
+        {% if mostrar_autorizar() %}
+          <a href="{{ url_for('permissoes.autorizar') }}" {% if ep == 'permissoes.autorizar' %}class="atual"{% endif %}>Autorizar</a>
         {% endif %}
         {% endif %}
         {% if g.get('ponto_exige') %}
@@ -32,7 +38,7 @@
         {% endif %}
         {% if pode('admin') %}
           <a href="{{ url_for('cardapio.lista') }}" {% if ep.startswith('cardapio.') %}class="atual"{% endif %}>Cardápio</a>
-          <a href="{{ url_for('auth.usuarios') }}" {% if ep == 'auth.usuarios' %}class="atual"{% endif %}>Usuários</a>
+          <a href="{{ url_for('auth.usuarios') }}" {% if ep in ('auth.usuarios', 'permissoes.configurar') %}class="atual"{% endif %}>Usuários</a>
           <a href="{{ url_for('ponto.equipe') }}" {% if ep.startswith('ponto.') %}class="atual"{% endif %}>Ponto</a>
           <a href="{{ url_for('ajustes.pagina') }}" {% if ep == 'ajustes.pagina' %}class="atual"{% endif %}>Ajustes</a>
         {% endif %}

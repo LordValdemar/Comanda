@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block titulo %}Permissões{% endblock %}
+{% block conteudo %}
+<section>
+  <h2>Permissões da equipe</h2>
+  <p>Escolha o que cada tipo de funcionário pode fazer. O administrador sempre pode tudo.</p>
+  <ul class="dica">
+    <li><b>Sim</b>: faz sozinho.</li>
+    <li><b>Com autorização</b>: faz depois que alguém que tem “Sim” (ou o administrador) abrir <b>Autorizar</b> no menu e mostrar o QR code; a pessoa lê com o celular e fica liberada por alguns minutos. Fica registrado quem autorizou.</li>
+    <li><b>Não</b>: não faz, nem com autorização.</li>
+  </ul>
+  <p class="dica">Para liberar uma pessoa só (e não o papel inteiro), use “Deixar fechar contas” na lista de <a href="{{ url_for('auth.usuarios') }}">usuários</a>.</p>
+</section>
+
+<form method="post">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  {% for grupo in grupos %}
+  <section>
+    <h2>O que cada papel pode fazer</h2>
+    <div class="tabela-rolagem">
+    <table class="permissoes">
+      <thead><tr><th>Função</th>{% for papel in grupo.papeis %}<th>{{ PAPEIS[papel] }}</th>{% endfor %}</tr></thead>
+      <tbody>
+        {% for linha in grupo.linhas %}
+        <tr>
+          <td><b>{{ linha.definicao.nome }}</b><br><span class="dica">{{ linha.definicao.descricao }}</span></td>
+          {% for celula in linha.celulas %}
+          <td>
+            {% if celula.fixa %}<span class="selo no-ar">Sempre</span>
+            {% else %}
+            <select name="{{ linha.funcao }}.{{ celula.papel }}" aria-label="{{ linha.definicao.nome }}: {{ PAPEIS[celula.papel] }}">
+              {% for valor, nome in NIVEIS.items() %}
+                {% if valor != 2 or linha.definicao.autorizavel %}
+                <option value="{{ valor }}" {{ 'selected' if valor == celula.nivel }}>{{ nome }}</option>
+                {% endif %}
+              {% endfor %}
+            </select>
+            {% endif %}
+          </td>
+          {% endfor %}
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    </div>
+  </section>
+  {% endfor %}
+  <button type="submit" class="grande">Salvar permissões</button>
+</form>
+{% endblock %}

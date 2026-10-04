@@ -39,7 +39,7 @@
       <div class="u-b200"><label>Observação</label><input type="text" name="codigo_obs" maxlength="120" placeholder="ex.: sem cebola"></div>
     </div>
     <div class="campo"><input type="search" id="filtro-produtos" placeholder="🔎 Procurar no cardápio..." autocomplete="off"></div>
-    {% if not grupos %}<p class="dica">O cardápio está vazio. {% if pode('admin') %}<a href="{{ url_for('cardapio.lista') }}">Cadastre os produtos</a>.{% endif %}</p>{% endif %}
+    {% if not grupos %}<p class="dica">O cardápio está vazio. {% if permite('cardapio') %}<a href="{{ url_for('cardapio.lista') }}">Cadastre os produtos</a>.{% endif %}</p>{% endif %}
     {% for categoria, grupo in grupos %}
     <div class="categoria-produtos">
       <h3>{{ categoria }}</h3>
@@ -88,7 +88,7 @@
         <button type="submit" name="acao" value="pronto" class="secundario" title="Tocou em Entregue sem querer? Volta para Pronto">↩ Não entregue</button>
       </form>
       {% endif %}
-      {% if pode('caixa') or i.status == 'pendente' or not i.vai_cozinha %}
+      {% if permite('cancelar') or i.status == 'pendente' or not i.vai_cozinha %}
       <form method="post" action="{{ url_for('comandas.alterar_item', comanda_id=comanda.id, item_id=i.id) }}" data-pedir-motivo="Motivo do cancelamento de “{{ i.nome }}”:">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="motivo" value="">
         <button type="submit" name="acao" value="cancelar" class="secundario">Cancelar</button>
@@ -100,7 +100,7 @@
   {% endfor %}
 </section>
 
-{% if pode('caixa') and comanda.status == 'aberta' %}
+{% if permite('cancelar') and comanda.status == 'aberta' %}
 <section>
   <details>
     <summary>Cancelar a comanda inteira</summary>

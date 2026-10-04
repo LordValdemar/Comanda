@@ -59,7 +59,7 @@
     <ul>{% for a in auditoria %}<li>{{ a.quando|data_hora }} · {{ a.usuario or '?' }} · {{ a.acao }}{% if a.detalhe %}: {{ a.detalhe }}{% endif %}</li>{% endfor %}</ul>
   </div>
   {% endif %}
-  {% if pode('admin') and comanda.status == 'fechada' %}
+  {% if permite('reabrir') and comanda.status == 'fechada' %}
   <form method="post" action="{{ url_for('comandas.reabrir', comanda_id=comanda.id) }}" class="historico" data-confirmar="Reabrir a comanda {{ comanda.numero }}? O fechamento será desfeito.">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <button type="submit">Reabrir comanda</button>

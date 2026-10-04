@@ -18,7 +18,7 @@ from logging.handlers import TimedRotatingFileHandler
 from flask import Flask, request
 from werkzeug.middleware.proxy_fix import ProxyFix
 
-from . import ajustes, auth, cardapio, certificado, comandas, cozinha, db, formatos, ponto, relatorios
+from . import ajustes, auth, cardapio, certificado, comandas, cozinha, db, formatos, permissoes, ponto, relatorios
 
 PASTA_PROJETO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -106,6 +106,7 @@ def create_app(sobrescrever=None):
 
     auth.registrar(app)
     ponto.registrar(app)
+    permissoes.registrar(app)
     for modulo in (cardapio, comandas, cozinha, relatorios, ajustes, certificado):
         app.register_blueprint(modulo.bp)
 

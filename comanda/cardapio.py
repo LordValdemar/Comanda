@@ -4,8 +4,7 @@ import sqlite3
 
 from flask import Blueprint, abort, flash, redirect, render_template, request, url_for
 
-from . import db
-from .auth import papel_exigido
+from . import db, permissoes
 from .formatos import ValorInvalido, entrada_reais, ler_reais
 
 bp = Blueprint("cardapio", __name__, url_prefix="/cardapio")
@@ -52,7 +51,7 @@ def _dados_produto(form, conexao):
 
 
 @bp.route("/")
-@papel_exigido("admin")
+@permissoes.exigir("cardapio")
 def lista():
     conexao = db.obter()
     categorias = conexao.execute(
@@ -67,7 +66,7 @@ def lista():
 
 
 @bp.route("/categorias", methods=["POST"])
-@papel_exigido("admin")
+@permissoes.exigir("cardapio")
 def nova_categoria():
     nome = request.form.get("nome", "").strip()
     conexao = db.obter()
@@ -86,7 +85,7 @@ def nova_categoria():
 
 
 @bp.route("/categorias/<int:categoria_id>", methods=["POST"])
-@papel_exigido("admin")
+@permissoes.exigir("cardapio")
 def alterar_categoria(categoria_id):
     conexao = db.obter()
     categoria = conexao.execute("SELECT * FROM categorias WHERE id = ?", (categoria_id,)).fetchone()
@@ -123,7 +122,7 @@ def alterar_categoria(categoria_id):
 
 
 @bp.route("/produtos", methods=["POST"])
-@papel_exigido("admin")
+@permissoes.exigir("cardapio")
 def novo_produto():
     conexao = db.obter()
     try:
@@ -144,7 +143,7 @@ def novo_produto():
 
 
 @bp.route("/produtos/<int:produto_id>", methods=["POST"])
-@papel_exigido("admin")
+@permissoes.exigir("cardapio")
 def alterar_produto(produto_id):
     conexao = db.obter()
     produto = conexao.execute("SELECT * FROM produtos WHERE id = ?", (produto_id,)).fetchone()

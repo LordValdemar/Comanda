@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block titulo %}Precisa de autorização{% endblock %}
+{% block classe_main %}medio{% endblock %}
+{% block conteudo %}
+<section>
+  <h2>🔒 Precisa de autorização</h2>
+  <p><b>{{ definicao.nome }}</b>: {{ definicao.descricao }}</p>
+  <p>Peça para {% if quem %}{% for papel in quem %}{{ 'o ' if loop.first else (' ou o ' if loop.last else ', o ') }}{{ PAPEIS[papel]|lower }}{% endfor %} ou o administrador{% else %}o administrador{% endif %}
+    abrir <b>Autorizar</b> no menu e mostrar o QR code. Leia com a câmera:</p>
+  <div class="leitor-qr">
+    <button type="button" id="abrir-camera" class="grande" data-prefixo="/autorizacao/" data-alvo="o QR code de autorização">📷 Abrir a câmera e ler o QR code</button>
+    <div id="leitor" hidden>
+      <video id="leitor-video" playsinline muted></video>
+      <p id="leitor-aviso" class="leitor-aviso"></p>
+      <button type="button" id="fechar-camera" class="secundario">Fechar a câmera</button>
+    </div>
+  </div>
+  <form action="{{ url_for('permissoes.digitar') }}" method="post" class="linha">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div><label for="codigo-autorizacao">Ou digite o código de 8 letras</label>
+      <input type="text" id="codigo-autorizacao" name="codigo" maxlength="8" autocapitalize="characters" autocomplete="off" required></div>
+    <div class="fixo"><button type="submit" class="secundario">Usar código</button></div>
+  </form>
+  <p class="dica">Também dá para usar o app Câmera do celular: aponte para o QR e toque no link que aparecer.</p>
+</section>
+{% endblock %}
+{% block scripts %}
+<script src="{{ url_for('static', filename='vendor/jsqr/jsQR.js') }}"></script>
+<script src="{{ url_for('static', filename='ponto_leitor.js') }}"></script>
+{% endblock %}

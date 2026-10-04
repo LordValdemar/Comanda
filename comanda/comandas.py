@@ -6,8 +6,8 @@ import sqlite3
 
 from flask import Blueprint, abort, flash, g, redirect, render_template, request, url_for
 
-from . import db
-from .auth import papel_exigido, pode, pode_fechar_conta
+from . import db, permissoes
+from .auth import papel_exigido
 from .cardapio import agrupar, produtos_ativos
 from .formatos import (
     ValorInvalido,
@@ -132,9 +132,6 @@ def cancelar_item(conexao, comanda, item, motivo, usuario):
         raise ErroComanda("A comanda já foi fechada: reabra-a para cancelar itens.")
     if item["status"] == "cancelado":
         raise ErroComanda("Este item já foi cancelado.")
-    # O garçom só desfaz um engano antes de a cozinha começar; depois disso, é com o caixa.
-    if usuario["papel"] == "garcom" and not (item["status"] == "pendente" or not item["vai_cozinha"]):
-        raise ErroComanda("A cozinha já começou este item. Peça ao caixa para cancelar.")
     motivo = (motivo or "").strip()[:120]
     if not motivo:
         raise ErroComanda("Informe o motivo do cancelamento.")
@@ -359,6 +356,13 @@ def alterar_item(comanda_id, item_id):
                 raise ErroComanda("Este item não pode voltar para pronto.")
             mudar_status_item(conexao, item, "pronto")
         elif acao == "cancelar":
+            # Antes de a cozinha começar, quem lançou desfaz o engano; depois, é a permissão "Cancelar".
+            if item["status"] != "pendente" and item["vai_cozinha"] and item["status"] != "cancelado":
+                if not permissoes.permite("cancelar"):
+                    raise ErroComanda("A cozinha já começou este item. Peça a quem pode cancelar.")
+                resposta = permissoes.verificar("cancelar")
+                if resposta is not None:
+                    return resposta
             cancelar_item(conexao, comanda, item, request.form.get("motivo"), g.usuario)
             flash(f"Item “{item['nome']}” cancelado.", "ok")
         else:
@@ -375,17 +379,17 @@ def alterar_item(comanda_id, item_id):
 # ---------------------------------------------------------------------------
 
 @bp.route("/<int:comanda_id>/fechar", methods=["GET", "POST"])
-@papel_exigido("caixa", "garcom")
+@permissoes.exigir("fechar_conta")
 def fechamento(comanda_id):
-    if not pode_fechar_conta():
-        abort(403)
     conexao = db.obter()
     comanda = buscar(conexao, comanda_id)
     if request.method == "POST":
         acao = request.form.get("acao")
         try:
             if acao == "ajustar":
-                _ajustar_conta(conexao, comanda)
+                resposta = _ajustar_conta(conexao, comanda)
+                if resposta is not None:
+                    return resposta
             elif acao == "pagar":
                 troco = registrar_pagamento(
                     conexao, comanda, request.form.get("forma", ""), ler_reais(request.form.get("valor")), g.usuario["id"]
@@ -429,13 +433,17 @@ def _ajustar_conta(conexao, comanda):
     if comanda["status"] != "aberta":
         raise ErroComanda("Esta comanda já foi fechada.")
     cobrar_taxa = 1 if request.form.get("cobrar_taxa") else 0
-    # O garçom autorizado tira ou devolve a taxa de serviço; desconto, só caixa e administrador.
-    if pode("caixa"):
-        desconto = ler_reais(request.form.get("desconto"))
-    elif "desconto" in request.form:
-        abort(403)
-    else:
-        desconto = comanda["desconto_centavos"]
+    # Quem fecha a conta tira ou devolve a taxa de serviço; desconto é outra permissão.
+    desconto = comanda["desconto_centavos"]
+    if "desconto" in request.form:
+        novo = ler_reais(request.form.get("desconto"))
+        if novo != desconto:
+            if not permissoes.permite("desconto"):
+                abort(403)
+            resposta = permissoes.verificar("desconto")
+            if resposta is not None:
+                return resposta
+            desconto = novo
     contas = totais(conexao, comanda)
     taxa = porcentagem(contas["subtotal"], comanda["taxa_percentual"]) if cobrar_taxa else 0
     if desconto > contas["subtotal"] + taxa:
@@ -451,7 +459,7 @@ def _ajustar_conta(conexao, comanda):
 
 
 @bp.route("/<int:comanda_id>/cancelar", methods=["POST"])
-@papel_exigido("caixa")
+@permissoes.exigir("cancelar")
 def cancelar(comanda_id):
     conexao = db.obter()
     comanda = buscar(conexao, comanda_id)
@@ -482,7 +490,7 @@ def cancelar(comanda_id):
 
 
 @bp.route("/<int:comanda_id>/reabrir", methods=["POST"])
-@papel_exigido("admin")
+@permissoes.exigir("reabrir")
 def reabrir(comanda_id):
     conexao = db.obter()
     comanda = buscar(conexao, comanda_id)
@@ -521,7 +529,7 @@ def cupom(comanda_id):
         "SELECT a.*, u.usuario FROM auditoria a LEFT JOIN usuarios u ON u.id = a.usuario_id "
         "WHERE comanda_id = ? ORDER BY a.id",
         (comanda_id,),
-    ).fetchall() if pode("caixa") else []
+    ).fetchall() if permissoes.pode("cancelar") or permissoes.pode("vendas") else []
     return render_template(
         "cupom.html", comanda=comanda, itens=itens, pagamentos=pagamentos, formas=FORMAS,
         contas=totais(conexao, comanda), auditoria=auditoria,
@@ -531,7 +539,7 @@ def cupom(comanda_id):
 
 
 @bp.route("/historico")
-@papel_exigido("caixa")
+@permissoes.exigir("vendas")
 def historico():
     from .relatorios import ler_periodo  # evita importação circular
 

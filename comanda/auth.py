@@ -190,10 +190,10 @@ def pode(*papeis):
 
 
 def pode_fechar_conta():
-    """Caixa e administrador fecham contas; o garçom, só se o administrador autorizou."""
-    if pode("caixa"):
-        return True
-    return g.usuario is not None and g.usuario["papel"] == "garcom" and bool(g.usuario["fecha_conta"])
+    """Para os botões: fecha contas (ou pode, pedindo autorização). Quem decide é a tela de Permissões."""
+    from . import permissoes  # evita importação circular
+
+    return permissoes.permite("fechar_conta")
 
 
 def _proximo_seguro(destino):

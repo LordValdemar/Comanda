@@ -4,8 +4,7 @@ from datetime import timedelta
 
 from flask import Blueprint, abort, render_template, request
 
-from . import db
-from .auth import papel_exigido
+from . import db, permissoes
 from .comandas import ErroComanda, mudar_status_item
 from .formatos import agora_utc, hora, minutos_desde, para_texto_utc
 
@@ -70,20 +69,20 @@ def entregues_recentes(conexao):
 
 
 @bp.route("/cozinha")
-@papel_exigido("cozinha", "caixa")
+@permissoes.exigir("cozinha")
 def tela():
     return render_template("cozinha.html")
 
 
 @bp.route("/api/cozinha")
-@papel_exigido("cozinha", "caixa")
+@permissoes.exigir("cozinha")
 def api_pedidos():
     conexao = db.obter()
     return {"comandas": pedidos_da_cozinha(conexao), "recentes": entregues_recentes(conexao)}
 
 
 @bp.route("/api/cozinha/itens/<int:item_id>", methods=["POST"])
-@papel_exigido("cozinha", "caixa")
+@permissoes.exigir("cozinha")
 def api_mudar(item_id):
     conexao = db.obter()
     item = conexao.execute("SELECT * FROM itens WHERE id = ?", (item_id,)).fetchone()
@@ -100,7 +99,7 @@ def api_mudar(item_id):
 
 
 @bp.route("/api/cozinha/comandas/<int:comanda_id>/pronto", methods=["POST"])
-@papel_exigido("cozinha", "caixa")
+@permissoes.exigir("cozinha")
 def api_tudo_pronto(comanda_id):
     """Marca como prontos todos os itens da comanda que ainda estão na cozinha."""
     conexao = db.obter()

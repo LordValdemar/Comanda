@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block titulo %}Autorizar{% endblock %}
+{% block classe_main %}medio{% endblock %}
+{% block conteudo %}
+<section>
+  <h2>Autorizar alguém da equipe</h2>
+  {% if not codigo %}
+    <p>O que você vai liberar? Aparece um QR code: a pessoa lê com o celular dela e fica liberada por {{ minutos }} minutos.</p>
+    <div class="autorizar-escolha">
+      {% for f in funcoes %}
+        <a class="botao grande" href="{{ url_for('permissoes.autorizar', funcao=f) }}">{{ FUNCOES[f].nome }}</a>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div id="autorizacao" class="autorizacao-qr" data-situacao="{{ url_for('permissoes.situacao', codigo=codigo) }}" data-validade="{{ validade }}">
+      <p class="autorizacao-funcao">{{ FUNCOES[funcao].nome }}</p>
+      <img src="{{ qr }}" alt="QR code de autorização" width="260" height="260">
+      <p>Ou a pessoa digita o código: <span class="selo codigo-autorizacao">{{ codigo }}</span></p>
+      <p class="dica" id="autorizacao-estado">Vale por <span id="autorizacao-tempo">2:00</span> e para uma leitura só.</p>
+      <div id="autorizacao-usado" hidden><p class="aviso ok">✔ Liberado para <b id="autorizacao-quem"></b>.</p></div>
+      <div class="acoes">
+        <a class="botao" href="{{ url_for('permissoes.autorizar', funcao=funcao) }}">Novo código</a>
+        <a class="botao secundario" href="{{ url_for('permissoes.autorizar') }}">Outra função</a>
+      </div>
+    </div>
+  {% endif %}
+</section>
+
+{% if recentes %}
+<section>
+  <h2>Últimas autorizações</h2>
+  <div class="tabela-rolagem">
+  <table>
+    <thead><tr><th>Quando</th><th>Função</th><th>Quem autorizou</th><th>Para quem</th></tr></thead>
+    <tbody>
+      {% for r in recentes %}
+        <tr><td>{{ r.usado_em|data_hora }}</td><td>{{ FUNCOES[r.funcao].nome if r.funcao in FUNCOES else r.funcao }}</td>
+          <td>{{ r.quem_autorizou or '—' }}</td><td>{{ r.quem_usou or '—' }}</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+</section>
+{% endif %}
+{% endblock %}
+{% block scripts %}
+<script src="{{ url_for('static', filename='autorizar.js') }}"></script>
+{% endblock %}

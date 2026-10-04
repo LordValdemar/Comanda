@@ -6,8 +6,7 @@ from datetime import date, timedelta
 
 from flask import Blueprint, Response, render_template, request
 
-from . import db
-from .auth import papel_exigido
+from . import db, permissoes
 from .comandas import FORMAS
 from .formatos import data_hora, entrada_reais, hoje_local, intervalo_utc
 
@@ -86,14 +85,14 @@ def resumo(conexao, inicio, fim):
 
 
 @bp.route("/")
-@papel_exigido("caixa")
+@permissoes.exigir("vendas")
 def vendas():
     inicio, fim = ler_periodo(request.args, padrao=hoje_local())
     return render_template("relatorios.html", inicio=inicio, fim=fim, dados=resumo(db.obter(), inicio, fim), formas=FORMAS)
 
 
 @bp.route("/comandas.csv")
-@papel_exigido("caixa")
+@permissoes.exigir("vendas")
 def exportar():
     inicio, fim = ler_periodo(request.args, padrao=hoje_local())
     de, ate = intervalo_utc(inicio, fim)

@@ -138,6 +138,20 @@ MIGRACOES = [
     """
     ALTER TABLE comandas ADD COLUMN taxa_centavos INTEGER;
     """,
+    # 6 - autorizações por QR code: quem tem a permissão libera, por alguns minutos, quem precisa
+    # de autorização (ex.: o caixa libera o garçom a fechar uma conta). Fica o registro de quem foi.
+    """
+    CREATE TABLE autorizacoes (
+        id             INTEGER PRIMARY KEY,
+        codigo         TEXT    NOT NULL UNIQUE,
+        funcao         TEXT    NOT NULL,
+        autorizado_por INTEGER REFERENCES usuarios(id) ON DELETE SET NULL,
+        usado_por      INTEGER REFERENCES usuarios(id) ON DELETE SET NULL,
+        criado_em      TEXT    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        usado_em       TEXT
+    );
+    CREATE INDEX autorizacoes_usadas ON autorizacoes(usado_em);
+    """,
 ]
 
 
@@ -198,5 +212,6 @@ def auditar(conexao, acao, detalhe="", comanda_id=None, usuario_id=None):
         usuario_id = g.usuario["id"]
     conexao.execute(
         "INSERT INTO auditoria (usuario_id, comanda_id, acao, detalhe) VALUES (?, ?, ?, ?)",
-        (usuario_id, comanda_id, acao, detalhe),
+        (usuario_id, comanda_id, acao,
+         f"{detalhe} (autorizado por {g.autorizado_por})" if g.get("autorizado_por") else detalhe),
     )

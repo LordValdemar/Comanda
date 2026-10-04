@@ -201,3 +201,13 @@ button.link-discreto { background: none; color: #6b7385; text-decoration: underl
 .u-inline { display: inline !important; }
 .u-junto { border-top: 0 !important; padding-top: 0 !important; }
 .u-entre { align-items: center !important; justify-content: space-between !important; }
+
+/* Permissões e autorização por QR code */
+table.permissoes td { vertical-align: top; }
+table.permissoes select { min-width: 150px; }
+.autorizar-escolha { display: grid; gap: 10px; margin-top: 12px; }
+.autorizacao-qr { text-align: center; }
+.autorizacao-qr img { display: block; margin: 8px auto; max-width: 100%; height: auto; image-rendering: pixelated; }
+.autorizacao-qr img.vencido { opacity: .15; }
+.autorizacao-funcao { font-size: 1.2rem; font-weight: 700; }
+.codigo-autorizacao { font-size: 1.1rem; letter-spacing: .12em; font-family: monospace; }

@@ -17,6 +17,7 @@
 </section>
 <section>
   <h2>Equipe</h2>
+  <p><a class="botao secundario" href="{{ url_for('permissoes.configurar') }}">🔐 Permissões: o que cada papel pode fazer</a></p>
   <div class="tabela-rolagem"><table>
     <tr><th>Usuário</th><th>Papel</th><th>Nova senha</th><th></th></tr>
     {% for u in usuarios %}

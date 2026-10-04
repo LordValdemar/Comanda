@@ -34,11 +34,14 @@
     botao.hidden = false;
   }
 
-  // Só aceita o QR do ponto deste site: um QR qualquer não leva o celular para outro lugar.
+  // Só aceita QR deste site com o caminho esperado (data-prefixo do botão; o padrão é o do ponto):
+  // um QR qualquer não leva o celular para outro lugar.
+  const prefixo = botao.dataset.prefixo || "/ponto/qr/";
+  const alvo = botao.dataset.alvo || "a tela do ponto";
   function enderecoDoPonto(texto) {
     try {
       const url = new URL(texto);
-      if (url.origin === location.origin && url.pathname.indexOf("/ponto/qr/") === 0) return url.href;
+      if (url.origin === location.origin && url.pathname.indexOf(prefixo) === 0) return url.href;
     } catch (erro) { /* não é um endereço */ }
     return null;
   }
@@ -69,7 +72,7 @@
           location.href = destino;
           return;
         }
-        mostrar("Este QR code não é o do ponto. Aponte para a tela do ponto.", true);
+        mostrar("Este não é o QR code esperado. Aponte para " + alvo + ".", true);
       }
     }
     setTimeout(lerQuadro, 200);
@@ -86,7 +89,7 @@
     }
     botao.hidden = true;
     area.hidden = false;
-    mostrar("Aponte para o QR code na tela do ponto.");
+    mostrar("Aponte para " + (botao.dataset.alvo ? alvo : "o QR code na tela do ponto") + ".");
     try {
       fluxo = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: "environment" } }, audio: false });
       video.srcObject = fluxo;

@@ -1,13 +1,13 @@
 """Varredura de permissões: cada papel tenta TODAS as rotas que não são dele.
 
-As rotas declaram quem pode usá-las (``papel_exigido``); aqui o garçom, o caixa e a cozinha
+As rotas declaram quem pode usá-las (``papel_exigido`` ou a função da tela de Permissões); aqui o garçom, o caixa e a cozinha
 chamam cada rota proibida para eles, com todas as ações conhecidas, e nada pode mudar no banco.
 Rotas novas entram na varredura sozinhas.
 """
 
 import pytest
 
-from comanda import db
+from comanda import db, permissoes
 from conftest import abrir_comanda, criar_pessoa, criar_produto, csrf, entrar
 
 ACOES = ["", "excluir", "finalizar", "pagar", "ajustar", "cancelar", "pronto", "entregue", "remover_pagamento",
@@ -51,7 +51,11 @@ def test_papel_nao_usa_rotas_que_nao_sao_dele(loja, app, cliente, papel):
     antes = foto(app)
     testadas = 0
     for regra in app.url_map.iter_rules():
-        papeis = getattr(app.view_functions[regra.endpoint], "papeis", None)
+        rota = app.view_functions[regra.endpoint]
+        papeis = getattr(rota, "papeis", None)
+        if getattr(rota, "funcao_exigida", None):  # rota da tela de Permissões: vale o padrão do papel
+            with app.test_request_context():
+                papeis = {papel} if permissoes.nivel_do_papel(rota.funcao_exigida, papel) else set()
         if papeis is None or papel in papeis:
             continue
         testadas += 1
