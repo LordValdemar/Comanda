@@ -219,28 +219,3 @@ def gravar_config(chave, valor):
             "ON CONFLICT(chave) DO UPDATE SET valor = excluded.valor",
             (chave, str(valor)),
         )
-
-
-def _com_autorizacao(detalhe):
-    """Quem fez com autorização por QR code: o nome de quem autorizou fica no histórico."""
-    if not g.get("autorizado_por"):
-        return detalhe
-    return f"{detalhe} (autorizado por {g.autorizado_por})" if detalhe else f"autorizado por {g.autorizado_por}"
-
-
-def anotar_autorizacao(conexao, acao, detalhe, comanda_id):
-    """Registra no histórico uma ação feita com autorização (as outras não precisam de registro extra)."""
-    if g.get("autorizado_por"):
-        with conexao:
-            auditar(conexao, acao, detalhe, comanda_id)
-
-
-def auditar(conexao, acao, detalhe="", comanda_id=None, usuario_id=None):
-    """Registra uma ação. Chame dentro da mesma transação da mudança."""
-    if usuario_id is None and getattr(g, "usuario", None) is not None:
-        usuario_id = g.usuario["id"]
-    conexao.execute(
-        "INSERT INTO auditoria (usuario_id, comanda_id, acao, detalhe) VALUES (?, ?, ?, ?)",
-        (usuario_id, comanda_id, acao,
-         _com_autorizacao(detalhe)),
-    )

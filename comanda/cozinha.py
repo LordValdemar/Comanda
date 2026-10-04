@@ -4,8 +4,10 @@ from datetime import timedelta
 
 from flask import Blueprint, abort, render_template, request
 
+from src.domain.erros import NaoEncontrado
+
 from . import db, permissoes
-from .comandas import ErroComanda, mudar_status_item
+from .comandas import ErroComanda, servico_de_comandas
 from .formatos import agora_utc, hora, minutos_desde, para_texto_utc
 
 bp = Blueprint("cozinha", __name__)
@@ -84,15 +86,13 @@ def api_pedidos():
 @bp.route("/api/cozinha/itens/<int:item_id>", methods=["POST"])
 @permissoes.exigir("cozinha")
 def api_mudar(item_id):
-    conexao = db.obter()
-    item = conexao.execute("SELECT * FROM itens WHERE id = ?", (item_id,)).fetchone()
-    if item is None:
-        abort(404)
     novo = request.form.get("status", "")
     if novo not in SITUACOES:
         return {"erro": "situação inválida"}, 400
     try:
-        mudar_status_item(conexao, item, novo)
+        servico_de_comandas().mudar_situacao(item_id, novo)
+    except NaoEncontrado:
+        abort(404)
     except ErroComanda as erro:
         return {"erro": str(erro)}, 409
     return {"status": novo}
@@ -102,11 +102,4 @@ def api_mudar(item_id):
 @permissoes.exigir("cozinha")
 def api_tudo_pronto(comanda_id):
     """Marca como prontos todos os itens da comanda que ainda estão na cozinha."""
-    conexao = db.obter()
-    with conexao:
-        alterados = conexao.execute(
-            "UPDATE itens SET status = 'pronto', atualizado_em = ? "
-            "WHERE comanda_id = ? AND vai_cozinha = 1 AND status IN ('pendente', 'preparando')",
-            (para_texto_utc(agora_utc()), comanda_id),
-        ).rowcount
-    return {"alterados": alterados}
+    return {"alterados": servico_de_comandas().marcar_tudo_pronto(comanda_id)}

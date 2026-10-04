@@ -57,7 +57,21 @@ python3 -m venv .venv
 .venv/bin/flask --app comanda run --debug --port 5001
 .venv/bin/python -m pytest -q      # testes
 .venv/bin/ruff check .             # estilo
+.venv/bin/mypy                     # tipos (núcleo e acesso ao banco)
 ```
+
+### Núcleo compartilhado com a plataforma
+
+As regras de negócio (contas, troco, fechamento, permissões, ponto) ficam em `src/domain` e são
+**as mesmas da plataforma online** ([plataforma-comanda](https://github.com/LordValdemar/plataforma-comanda)).
+Esta pasta é uma cópia: não a edite aqui. Para mudar uma regra, mude na plataforma e copie de novo:
+
+```bash
+cd ../plataforma-comanda && python ferramentas/copiar_nucleo.py ../Comanda
+```
+
+O teste `tests/test_nucleo.py` falha se a cópia for alterada à mão. O acesso ao banco local
+(`src/infrastructure`) é desta versão, porque o banco dela é diferente (um estabelecimento só).
 
 ## Administração pelo terminal
 
