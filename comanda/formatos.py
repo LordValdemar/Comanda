@@ -40,10 +40,11 @@ def intervalo_utc(inicio, fim):
 
 
 def data_hora(texto, formato="%d/%m/%Y %H:%M"):
-    """Filtro de template: texto UTC do banco → horário local."""
+    """Filtro de template: texto UTC do banco (ou datetime com fuso) → horário local."""
     if not texto:
         return ""
-    return de_texto_utc(texto).astimezone(fuso()).strftime(formato)
+    momento = texto if isinstance(texto, datetime) else de_texto_utc(texto)
+    return momento.astimezone(fuso()).strftime(formato)
 
 
 MESES = ("janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro",

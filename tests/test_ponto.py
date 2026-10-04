@@ -78,6 +78,7 @@ def test_entrada_e_saida_com_qr(logado, app):
     assert resposta.headers["Location"].endswith("/login")
     registro = consultar(app, "SELECT * FROM ponto_registros")[0]
     assert registro["saida"] and registro["motivo_saida"] == "saída" and registro["usuario_nome"] == "joao"
+    assert "Saída registrada às" in joao.get("/login").get_data(as_text=True)  # o aviso sobrevive à saída
 
 
 def test_qr_vale_para_uma_pessoa_so_e_vence(logado, app):

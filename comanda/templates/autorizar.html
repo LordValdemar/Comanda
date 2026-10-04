@@ -29,7 +29,7 @@
     </form>
   {% else %}
     <div id="autorizacao" class="autorizacao-qr" data-situacao="{{ url_for('permissoes.situacao', codigo=codigo) }}" data-validade="{{ validade }}">
-      <p class="autorizacao-funcao">{{ FUNCOES[funcao].nome }} · {{ descrever({'modo': modo, 'minutos': minutos}) }}</p>
+      <p class="autorizacao-funcao">{{ FUNCOES[funcao].nome }} · {{ descrever(modo, minutos) }}</p>
       <img src="{{ qr }}" alt="QR code de autorização" width="260" height="260">
       <p>Ou a pessoa digita o código: <span class="selo codigo-autorizacao">{{ codigo }}</span></p>
       <p class="dica" id="autorizacao-estado">Vale por <span id="autorizacao-tempo">2:00</span> e para uma leitura só.</p>
@@ -51,7 +51,7 @@
     <tbody>
       {% for a in ativas %}
         <tr><td>{{ a.quem_usou or '—' }}</td><td>{{ FUNCOES[a.funcao].nome if a.funcao in FUNCOES else a.funcao }}</td>
-          <td>{{ descrever(a) }}{% if a.modo == 'minutos' and a.ate %} <span class="dica">(até {{ a.ate|data_hora('%H:%M') }})</span>{% endif %}</td>
+          <td>{{ a.descricao }}{% if a.modo == 'minutos' and a.ate %} <span class="dica">(até {{ a.ate|data_hora('%H:%M') }})</span>{% endif %}</td>
           <td>{{ a.quem_autorizou or '—' }}</td>
           <td><form action="{{ url_for('permissoes.encerrar', liberacao_id=a.id) }}" method="post" data-confirmar="Encerrar a liberação de {{ a.quem_usou }}?">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="perigo">Encerrar</button></form></td></tr>
@@ -71,7 +71,7 @@
     <tbody>
       {% for r in recentes %}
         <tr><td>{{ r.usado_em|data_hora }}</td><td>{{ FUNCOES[r.funcao].nome if r.funcao in FUNCOES else r.funcao }}</td>
-          <td>{{ descrever(r) }}{% if r.revogada_em %} <span class="selo fora">encerrada</span>{% elif r.consumida_em %} <span class="selo">usada</span>{% endif %}</td>
+          <td>{{ r.descricao }}{% if r.revogada_em %} <span class="selo fora">encerrada</span>{% elif r.consumida_em %} <span class="selo">usada</span>{% endif %}</td>
           <td>{{ r.quem_autorizou or '—' }}</td><td>{{ r.quem_usou or '—' }}</td></tr>
       {% endfor %}
     </tbody>

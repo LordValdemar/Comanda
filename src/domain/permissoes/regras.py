@@ -121,12 +121,10 @@ class TabelaDePermissoes:
 
     def nivel(self, funcao: str, pessoa: Pessoa | None) -> int:
         """O que a pessoa pode nesta função."""
-        if pessoa is None:
-            return NAO
+        if pessoa is None or FUNCOES[funcao].modulo not in pessoa.modulos:
+            return NAO  # módulo que a loja não tem (ou que o papel não usa): nem o administrador
         if pessoa.administrador:
             return SIM
-        if FUNCOES[funcao].modulo not in pessoa.modulos:
-            return NAO
         if funcao == "fechar_conta" and pessoa.papel == "garcom" and pessoa.fecha_conta:
             return SIM  # permissão dada à pessoa, na lista de usuários
         return self.nivel_do_papel(funcao, pessoa.papel)
