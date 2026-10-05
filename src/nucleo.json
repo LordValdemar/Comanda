@@ -1,8 +1,8 @@
 {
   "origem": "LordValdemar/plataforma-comanda",
-  "commit": "99b93ed",
+  "commit": "f976392",
   "infraestrutura": [
     "backup.py"
   ],
-  "impressao_digital": "62d2906f8423cb5fd735f2ee7ac96496f4c407e9942c8647f59007ab164a1b4d"
+  "impressao_digital": "a3968fa9b3742501b9d653446d9e71ea63ac40b8ed676c698b9b376aebdf2746"
 }

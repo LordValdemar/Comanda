@@ -1,4 +1,7 @@
-"""Comandas: abrir, lançar pedidos, fechar a conta (pagamentos) e imprimir o cupom."""
+"""Comandas: abrir, lançar pedidos, fechar a conta (pagamentos) e imprimir o cupom.
+
+As regras vêm do núcleo (src/domain/comanda); o que as telas mostram vem de ConsultasDaComanda.
+"""
 
 import logging
 import re
@@ -16,7 +19,7 @@ from src.domain.comanda import (
 )
 from src.domain.dinheiro import ValorInvalido, entrada_reais, ler_reais, reais
 from src.domain.erros import ErroDeDominio, NaoEncontrado
-from src.infrastructure.sqlite import RepositorioDeComandasSQLite
+from src.infrastructure.sqlite import ConsultasDaComanda, RepositorioDeComandasSQLite
 
 from . import db, permissoes
 from .auth import papel_exigido
@@ -55,22 +58,16 @@ def totais(comanda_id):
     return servico_de_comandas().comanda(comanda_id).totais
 
 
-def buscar(conexao, comanda_id):
-    comanda = conexao.execute(
-        "SELECT c.*, u.usuario AS garcom_nome FROM comandas c LEFT JOIN usuarios u ON u.id = c.garcom_id WHERE c.id = ?",
-        (comanda_id,),
-    ).fetchone()
+def consultas():
+    return ConsultasDaComanda(db.obter())
+
+
+def buscar(comanda_id):
+    """A comanda (como a tela mostra); 404 se não existe."""
+    comanda = consultas().comanda(comanda_id)
     if comanda is None:
         abort(404)
     return comanda
-
-
-def _itens(conexao, comanda_id):
-    return conexao.execute(
-        "SELECT i.*, u.usuario AS garcom FROM itens i LEFT JOIN usuarios u ON u.id = i.lancado_por "
-        "WHERE comanda_id = ? ORDER BY i.id",
-        (comanda_id,),
-    ).fetchall()
 
 
 def _voltar(comanda_id):
@@ -84,47 +81,25 @@ def _voltar(comanda_id):
 @bp.route("/")
 @papel_exigido("caixa", "garcom")
 def lista():
-    conexao = db.obter()
+    leitura = consultas()
     numero = request.args.get("numero", "").strip()
     if numero:
         # Busca pelo número do cartão: abre a comanda, ou oferece abrir uma nova.
-        achada = conexao.execute(
-            "SELECT id FROM comandas WHERE numero = ? AND status = 'aberta'", (numero,)
-        ).fetchone() if numero.isdigit() else None
+        achada = leitura.aberta_com_numero(numero) if numero.isdigit() else None
         if achada:
-            return _voltar(achada["id"])
-    abertas = conexao.execute(
-        """
-        SELECT c.*,
-               (SELECT COALESCE(SUM(preco_centavos * quantidade), 0) FROM itens
-                 WHERE comanda_id = c.id AND status != 'cancelado') AS consumo,
-               (SELECT COUNT(*) FROM itens WHERE comanda_id = c.id AND status = 'pronto') AS prontos,
-               (SELECT COUNT(*) FROM itens WHERE comanda_id = c.id AND status = 'preparando') AS preparando,
-               (SELECT COUNT(*) FROM itens WHERE comanda_id = c.id AND status = 'pendente') AS aguardando
-               , (SELECT usuario FROM usuarios WHERE id = c.garcom_id) AS garcom_nome
-        FROM comandas c WHERE status = 'aberta' ORDER BY numero
-        """
-    ).fetchall()
-    prontos = conexao.execute(
-        "SELECT i.*, c.numero, c.mesa FROM itens i JOIN comandas c ON c.id = i.comanda_id "
-        "WHERE i.status = 'pronto' AND c.status != 'cancelada' ORDER BY i.atualizado_em"
-    ).fetchall()
-    return render_template("comandas.html", abertas=abertas, prontos=prontos, numero_buscado=numero,
-                           garcons=garcons_ativos(conexao))
+            return _voltar(achada)
+    return render_template("comandas.html", abertas=leitura.abertas(), prontos=leitura.prontos_para_entregar(),
+                           numero_buscado=numero, garcons=leitura.garcons())
 
 
-def garcons_ativos(conexao):
-    return conexao.execute("SELECT id, usuario FROM usuarios WHERE papel = 'garcom' AND ativo = 1 ORDER BY usuario").fetchall()
-
-
-def _garcom_escolhido(conexao, padrao=None):
+def _garcom_escolhido(padrao=None):
     """Garçom que atende: quem é garçom atende as comandas que abre; os outros escolhem na lista."""
     if g.usuario["papel"] == "garcom" and "garcom_id" not in request.form:
         return g.usuario["id"]
     escolhido = request.form.get("garcom_id", "")
     if not escolhido:
         return None if "garcom_id" in request.form else padrao
-    if not escolhido.isdigit() or not any(str(p["id"]) == escolhido for p in garcons_ativos(conexao)):
+    if not escolhido.isdigit() or not any(str(p["id"]) == escolhido for p in consultas().garcons()):
         raise ErroComanda("Escolha um garçom da lista.")
     return int(escolhido)
 
@@ -132,46 +107,42 @@ def _garcom_escolhido(conexao, padrao=None):
 @bp.route("/", methods=["POST"])
 @papel_exigido("caixa", "garcom")
 def nova():
-    conexao = db.obter()
     numero = request.form.get("numero", "")
     try:
         comanda_id = servico_de_comandas().abrir(numero, request.form.get("mesa", ""), request.form.get("cliente", ""),
-                                                 taxa_padrao(), ator_atual(), _garcom_escolhido(conexao))
+                                                 taxa_padrao(), ator_atual(), _garcom_escolhido())
     except ErroComanda as erro:
-        aberta = conexao.execute(
-            "SELECT id FROM comandas WHERE numero = ? AND status = 'aberta'", (numero.strip(),)
-        ).fetchone()
+        aberta = consultas().aberta_com_numero(numero.strip())
         flash(str(erro), "erro")
-        return _voltar(aberta["id"]) if aberta else redirect(url_for("comandas.lista"))
+        return _voltar(aberta) if aberta else redirect(url_for("comandas.lista"))
     return _voltar(comanda_id)
 
 
 @bp.route("/<int:comanda_id>")
 @papel_exigido("caixa", "garcom")
 def detalhe(comanda_id):
-    conexao = db.obter()
-    comanda = buscar(conexao, comanda_id)
+    leitura = consultas()
+    comanda = buscar(comanda_id)
     return render_template(
         "comanda.html",
         comanda=comanda,
-        itens=_itens(conexao, comanda_id),
-        grupos=agrupar(produtos_ativos(conexao)),
+        itens=leitura.itens(comanda_id),
+        grupos=agrupar(produtos_ativos(db.obter())),
         contas=totais(comanda_id),
         status_item=STATUS_ITEM,
-        garcons=garcons_ativos(conexao),
+        garcons=leitura.garcons(),
     )
 
 
 @bp.route("/<int:comanda_id>/dados", methods=["POST"])
 @papel_exigido("caixa", "garcom")
 def alterar_dados(comanda_id):
-    conexao = db.obter()
-    comanda = buscar(conexao, comanda_id)
+    comanda = buscar(comanda_id)
     try:
-        garcons = garcons_ativos(conexao)
+        garcons = consultas().garcons()
         servico_de_comandas().alterar_dados(
             comanda_id, request.form.get("mesa", ""), request.form.get("cliente", ""),
-            _garcom_escolhido(conexao, comanda["garcom_id"]), {p["id"]: p["usuario"] for p in garcons}, ator_atual(),
+            _garcom_escolhido(comanda["garcom_id"]), {p["id"]: p["usuario"] for p in garcons}, ator_atual(),
         )
     except ErroComanda as erro:
         flash(str(erro), "erro")
@@ -180,7 +151,7 @@ def alterar_dados(comanda_id):
     return _voltar(comanda_id)
 
 
-def _pedidos_do_formulario(form, conexao):
+def _pedidos_do_formulario(form):
     """Lê o formulário de lançamento: qtd_<id>/obs_<id> do cardápio e o lançamento rápido por código."""
     pedidos = []
     for chave, valor in form.items():
@@ -194,24 +165,23 @@ def _pedidos_do_formulario(form, conexao):
             pedidos.append(Pedido(produto_id, quantidade, form.get(f"obs_{produto_id}", "")))
     codigo = form.get("codigo", "").strip()
     if codigo:
-        produto = conexao.execute("SELECT id FROM produtos WHERE codigo = ? AND ativo = 1", (codigo,)).fetchone()
-        if produto is None:
+        produto_id = consultas().produto_pelo_codigo(codigo)
+        if produto_id is None:
             raise ErroComanda(f"Nenhum produto com o código “{codigo}”.")
         try:
             quantidade = int(form.get("codigo_qtd") or 1)
         except ValueError:
             raise ErroComanda("Quantidade inválida.") from None
-        pedidos.append(Pedido(produto["id"], quantidade, form.get("codigo_obs", "")))
+        pedidos.append(Pedido(produto_id, quantidade, form.get("codigo_obs", "")))
     return pedidos
 
 
 @bp.route("/<int:comanda_id>/itens", methods=["POST"])
 @papel_exigido("caixa", "garcom")
 def lancar_itens(comanda_id):
-    conexao = db.obter()
-    comanda = buscar(conexao, comanda_id)
+    comanda = buscar(comanda_id)
     try:
-        pedidos = _pedidos_do_formulario(request.form, conexao)
+        pedidos = _pedidos_do_formulario(request.form)
         # Comanda aberta pelo caixa sem garçom: o garçom que lança o primeiro pedido passa a atender.
         atendente = g.usuario["id"] if g.usuario["papel"] == "garcom" else None
         lancados = servico_de_comandas().lancar(comanda_id, pedidos, ator_atual(), atendente)
@@ -266,8 +236,7 @@ def alterar_item(comanda_id, item_id):
 @bp.route("/<int:comanda_id>/fechar", methods=["GET", "POST"])
 @permissoes.exigir("fechar_conta")
 def fechamento(comanda_id):
-    conexao = db.obter()
-    comanda = buscar(conexao, comanda_id)
+    comanda = buscar(comanda_id)
     servico = servico_de_comandas()
     if request.method == "POST":
         acao = request.form.get("acao")
@@ -298,14 +267,11 @@ def fechamento(comanda_id):
             flash(str(erro), "erro")
         return redirect(url_for("comandas.fechamento", comanda_id=comanda_id))
 
-    contas = totais(comanda_id)
-    pagamentos = conexao.execute("SELECT * FROM pagamentos WHERE comanda_id = ? ORDER BY id", (comanda_id,)).fetchall()
-    na_cozinha = conexao.execute(
-        "SELECT COUNT(*) FROM itens WHERE comanda_id = ? AND status IN ('pendente', 'preparando', 'pronto')", (comanda_id,)
-    ).fetchone()[0]
+    leitura = consultas()
     return render_template(
-        "fechar.html", comanda=comanda, contas=contas, pagamentos=pagamentos, formas=FORMAS,
-        itens=_itens(conexao, comanda_id), na_cozinha=na_cozinha, entrada_reais=entrada_reais,
+        "fechar.html", comanda=comanda, contas=totais(comanda_id), pagamentos=leitura.pagamentos(comanda_id),
+        formas=FORMAS, itens=leitura.itens(comanda_id), na_cozinha=leitura.itens_na_cozinha(comanda_id),
+        entrada_reais=entrada_reais,
     )
 
 
@@ -328,7 +294,7 @@ def _ajustar_conta(comanda):
 @bp.route("/<int:comanda_id>/cancelar", methods=["POST"])
 @permissoes.exigir("cancelar")
 def cancelar(comanda_id):
-    comanda = buscar(db.obter(), comanda_id)
+    comanda = buscar(comanda_id)
     try:
         servico_de_comandas().cancelar(comanda_id, request.form.get("motivo", ""), ator_atual())
     except ErroComanda as erro:
@@ -341,7 +307,7 @@ def cancelar(comanda_id):
 @bp.route("/<int:comanda_id>/reabrir", methods=["POST"])
 @permissoes.exigir("reabrir")
 def reabrir(comanda_id):
-    comanda = buscar(db.obter(), comanda_id)
+    comanda = buscar(comanda_id)
     try:
         servico_de_comandas().reabrir(comanda_id, ator_atual())
     except ErroComanda as erro:
@@ -355,19 +321,11 @@ def reabrir(comanda_id):
 @papel_exigido("caixa", "garcom")
 def cupom(comanda_id):
     """Conferência (comanda aberta) ou recibo (fechada), no tamanho da impressora térmica de 80 mm."""
-    conexao = db.obter()
-    comanda = buscar(conexao, comanda_id)
-    itens = conexao.execute(
-        "SELECT nome, preco_centavos, SUM(quantidade) AS quantidade FROM itens "
-        "WHERE comanda_id = ? AND status != 'cancelado' GROUP BY nome, preco_centavos ORDER BY MIN(id)",
-        (comanda_id,),
-    ).fetchall()
-    pagamentos = conexao.execute("SELECT * FROM pagamentos WHERE comanda_id = ? ORDER BY id", (comanda_id,)).fetchall()
-    auditoria = conexao.execute(
-        "SELECT a.*, u.usuario FROM auditoria a LEFT JOIN usuarios u ON u.id = a.usuario_id "
-        "WHERE comanda_id = ? ORDER BY a.id",
-        (comanda_id,),
-    ).fetchall() if permissoes.pode("cancelar") or permissoes.pode("vendas") else []
+    leitura = consultas()
+    comanda = buscar(comanda_id)
+    itens = leitura.itens_do_cupom(comanda_id)
+    pagamentos = leitura.pagamentos(comanda_id)
+    auditoria = leitura.auditoria(comanda_id) if permissoes.pode("cancelar") or permissoes.pode("vendas") else []
     from .ajustes import dados_da_loja  # evita importação circular
 
     formas_usadas = list(dict.fromkeys(FORMAS.get(p["forma"], p["forma"]) for p in pagamentos))
@@ -384,12 +342,5 @@ def historico():
 
     inicio, fim = ler_periodo(request.args, padrao=hoje_local())
     de, ate = intervalo_utc(inicio, fim)
-    comandas = db.obter().execute(
-        "SELECT c.*, u.usuario AS fechada_por_nome, (SELECT usuario FROM usuarios WHERE id = c.garcom_id) AS garcom_nome, "
-        "(SELECT a.detalhe FROM auditoria a WHERE a.comanda_id = c.id "
-        "AND a.acao = 'fechar conta' ORDER BY a.id DESC LIMIT 1) AS autorizacao "
-        "FROM comandas c LEFT JOIN usuarios u ON u.id = c.fechada_por "
-        "WHERE c.status != 'aberta' AND c.fechada_em >= ? AND c.fechada_em < ? ORDER BY c.fechada_em DESC",
-        (de, ate),
-    ).fetchall()
+    comandas = consultas().encerradas(de, ate)
     return render_template("historico.html", comandas=comandas, inicio=inicio, fim=fim)
