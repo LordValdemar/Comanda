@@ -43,10 +43,15 @@
           <a href="{{ url_for('ajustes.pagina') }}" {% if ep == 'ajustes.pagina' %}class="atual"{% endif %}>Ajustes</a>
         {% endif %}
         <a href="{{ url_for('auth.minha_conta') }}" {% if ep == 'auth.minha_conta' %}class="atual"{% endif %}>Minha conta</a>
+        {% if g.get('ponto_aberto') %}
+          {# Com o ponto aberto, sair é registrar a saída. #}
+          <a href="{{ url_for('ponto.meu') }}" title="Registre a saída do ponto para sair">Sair ({{ g.usuario.usuario }})</a>
+        {% else %}
         <form action="{{ url_for('auth.sair') }}" method="post">
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
           <button type="submit">Sair ({{ g.usuario.usuario }})</button>
         </form>
+        {% endif %}
       </nav>
     {% endif %}
   </header>

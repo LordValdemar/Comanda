@@ -49,6 +49,26 @@ def hoje():
 # Ponto
 # ---------------------------------------------------------------------------
 
+def test_com_o_ponto_aberto_sair_exige_registrar_a_saida(logado, app):
+    criar_pessoa(app, "joao", "garcom")
+    ligar_ponto(logado)
+    joao = aparelho(app, "joao")
+    ler_qr(joao, app)
+    post(joao, "/ponto/entrada")
+    pagina = joao.get("/comandas/").get_data(as_text=True)
+    assert 'action="/sair"' not in pagina and "Registre a saída do ponto para sair" in pagina
+
+    # Mesmo mandando o pedido direto, o "Sair" não desconecta: leva à página do ponto, e o ponto continua aberto.
+    assert post(joao, "/sair").headers["Location"].endswith("/ponto")
+    assert "Para sair, registre a saída" in joao.get("/ponto").get_data(as_text=True)
+    assert joao.get("/comandas/").status_code == 200
+    assert len(consultar(app, "SELECT * FROM ponto_registros WHERE saida IS NULL")) == 1
+
+    assert post(joao, "/ponto/saida").headers["Location"].endswith("/login")
+    assert len(consultar(app, "SELECT * FROM ponto_registros WHERE saida IS NULL")) == 0
+    assert post(logado, "/sair").headers["Location"].endswith("/login")    # o administrador sai normalmente
+
+
 def test_sem_controle_ligado_a_equipe_entra_normalmente(logado, app):
     criar_pessoa(app, "joao", "garcom")
     assert aparelho(app, "joao").get("/comandas/").status_code == 200

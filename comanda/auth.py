@@ -249,6 +249,10 @@ def codigo():
 
 @bp.route("/sair", methods=["POST"])
 def sair():
+    # Com o ponto aberto, sair é registrar a saída (na página do ponto, com ou sem o QR code).
+    if g.get("ponto_aberto"):
+        flash("Você está com o ponto aberto. Para sair, registre a saída.", "erro")
+        return redirect(url_for("ponto.meu"))
     session.clear()
     return redirect(url_for("auth.entrar"))
 
