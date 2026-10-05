@@ -102,6 +102,11 @@ class ServicoDeEmpresas:
     def remover_logo(self, empresa_id: int) -> None:
         self._repo.remover_logo(empresa_id)
 
+    def renomear(self, empresa_id: int, nome: str) -> None:
+        """Só o nome (o primeiro acesso dá nome à empresa principal); em branco, fica como está."""
+        if nome.strip():
+            self._repo.renomear(empresa_id, nome.strip()[:NOME_MAX])
+
     # Cadastro aberto: a loja e o administrador dela ---------------------
 
     def abrir_loja(self, loja: NovaLoja, criar_administrador: Callable[[int], T]) -> tuple[int, T]:
