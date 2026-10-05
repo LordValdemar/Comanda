@@ -62,7 +62,7 @@ class ServicoDeContas:
         if not self._repo.empresa_existe(empresa_id):
             raise ErroUsuario("Empresa não encontrada.")
         if self._repo.nome_em_uso(empresa_id, nome):
-            raise ErroUsuario(f"O usuário “{nome}” já existe nesta loja. Escolha outro nome.")
+            raise ErroUsuario(f"O usuário “{nome}” já existe. Escolha outro nome.")
         return self._repo.inserir(empresa_id, nome, self._senhas.gerar(senha), papel, plataforma, novo_token())
 
     def trocar_senha(self, usuario_id: int, nova: str) -> None:
