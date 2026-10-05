@@ -1,10 +1,10 @@
-"""Consultas das telas no SQLite da Comanda local: o que a lista, o cupom, o histórico e a cozinha mostram."""
+"""Consultas das telas no SQLite da Comanda local: o que a lista, o cupom, o histórico, a cozinha e o ponto mostram."""
 
 import pytest
 
 from comanda import db
 from src.domain.comanda import Ator, Pedido, ServicoDeComandas
-from src.infrastructure.sqlite import ConsultasDaComanda, RepositorioDeComandasSQLite
+from src.infrastructure.sqlite import ConsultasDaComanda, ConsultasDoPonto, RepositorioDeComandasSQLite
 
 CAIXA = Ator(None)
 
@@ -45,3 +45,10 @@ def test_telas_da_comanda(conexao):
     assert leitura.produto_pelo_codigo("12") == 1 and leitura.produto_pelo_codigo("99") is None
     assert [g["usuario"] for g in leitura.garcons()] == ["ana"]       # garçom desativado não aparece
     assert [i["comanda_id"] for i in leitura.na_cozinha()] == [aberta, aberta]
+
+
+def test_equipe_do_ponto(conexao):
+    with conexao:
+        conexao.execute("INSERT INTO ponto_registros (usuario_id, usuario_nome, entrada) VALUES (7, 'ana', '2026-10-04 12:00:00')")
+    equipe = {p["usuario"]: p["trabalhando_desde"] for p in ConsultasDoPonto(conexao).equipe()}
+    assert equipe == {"ana": "2026-10-04 12:00:00"}                  # o garçom desativado não aparece

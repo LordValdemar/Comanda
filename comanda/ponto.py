@@ -29,7 +29,7 @@ from src.domain.horario import DIAS, Horario, HorarioInvalido, ler_dias, ler_hor
 from src.domain.periodo import Periodo
 from src.domain.ponto import MAX_CODIGOS_ERRADOS, QR_TROCA_SEGUNDOS, ErroDePonto, Funcionario, ServicoDePonto
 from src.domain.tentativas import LimiteDeTentativas
-from src.infrastructure.sqlite import RepositorioDePontoSQLite
+from src.infrastructure.sqlite import ConsultasDoPonto, RepositorioDePontoSQLite
 
 from . import db
 from .auth import INICIO, login_obrigatorio, papel_exigido
@@ -286,11 +286,7 @@ def equipe():
     inicio, fim = _ler_periodo()
     pessoa_id = request.args.get("pessoa", type=int)
     registros = ponto.historico(*_periodo_utc(inicio, fim), pessoa_id)
-    pessoas = db.obter().execute(
-        "SELECT u.*, p.entrada AS trabalhando_desde FROM usuarios u "
-        "LEFT JOIN ponto_registros p ON p.usuario_id = u.id AND p.saida IS NULL "
-        "WHERE u.ativo = 1 ORDER BY u.papel = 'admin', u.usuario"
-    ).fetchall()
+    pessoas = ConsultasDoPonto(db.obter()).equipe()
     return render_template(
         "ponto_equipe.html",
         ativo=ponto.ativo,

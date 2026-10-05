@@ -1,6 +1,6 @@
 {
   "origem": "LordValdemar/plataforma-comanda",
-  "commit": "f976392",
+  "commit": "d31d7c6",
   "infraestrutura": [
     "backup.py"
   ],
