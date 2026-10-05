@@ -62,8 +62,11 @@ class ServicoDaPlataforma:
             raise NaoEncontrado("Empresa não encontrada.")
         return empresa
 
-    def criar(self, dados: DadosDaEmpresa, criar_administrador: Callable[[int], T]) -> tuple[int, T]:
-        """Cria a empresa com o administrador dela; se o administrador for recusado, a empresa é desfeita."""
+    def criar(self, dados: DadosDaEmpresa, criar_administrador: Callable[[int], T] | None = None) -> tuple[int, T | None]:
+        """Cria a empresa com o administrador dela; se o administrador for recusado, a empresa é desfeita.
+
+        Sem `criar_administrador` (linha de comando), a empresa fica sem ninguém: o administrador é criado depois.
+        """
         nome = dados.nome.strip()[:NOME_MAX]
         if not nome:
             raise CadastroInvalido("Informe o nome da empresa.")
@@ -73,6 +76,8 @@ class ServicoDaPlataforma:
             raise CadastroInvalido(f"Empresa não criada: {erro}") from None
         empresa_id = self._repo.criar_cliente(DadosDaEmpresa(nome, dados.limites, dados.modulos_liberados),
                                               self._codigo_livre(nome), cadastro)
+        if criar_administrador is None:
+            return empresa_id, None
         try:
             return empresa_id, criar_administrador(empresa_id)
         except Exception:

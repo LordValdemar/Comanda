@@ -1,128 +1,66 @@
-"""Login, usuários, permissões por papel e proteção CSRF."""
+"""Login, usuários, permissões por papel e proteção CSRF.
+
+As regras das contas vêm do núcleo (src/domain/contas/locais.py); aqui ficam a sessão, o CSRF e as rotas.
+"""
 
 import hmac
 import logging
 import secrets
-import threading
 import time
 from functools import wraps
 
 from flask import Blueprint, abort, flash, g, redirect, render_template, request, session, url_for
-from werkzeug.security import check_password_hash, generate_password_hash
+
+from src.domain.contas import PAPEIS as _TODOS_OS_PAPEIS
+from src.domain.contas import CodigoIncorreto, ErroUsuario, ServicoDeContasLocais
+from src.domain.contas.entidades import JANELA_BLOQUEIO, MAX_TENTATIVAS
+from src.domain.contas.locais import SENHA_MINIMA_LOCAL as SENHA_MINIMA
+from src.domain.contas.locais import BloqueadoAqui, Desativado
+from src.domain.erros import NaoEncontrado
+from src.domain.tentativas import LimiteDeTentativas
+from src.infrastructure.senhas import SenhasWerkzeug
+from src.infrastructure.sqlite import ConsultasDeUsuarios, RepositorioDeContasSQLite
 
 from . import db, totp
+
+__all__ = ["PAPEIS", "SENHA_MINIMA", "ErroUsuario", "criar_usuario", "desativar_2fa", "trocar_senha"]
 
 bp = Blueprint("auth", __name__)
 log = logging.getLogger("comanda.auth")
 
-PAPEIS = {
-    "admin": "Administrador",   # tudo, inclusive cardápio, usuários e ajustes
-    "caixa": "Caixa",           # comandas, fechamento, cancelamentos e relatórios
-    "garcom": "Garçom",         # abre comandas e lança pedidos
-    "cozinha": "Cozinha",       # só a tela da cozinha
-}
+# Os papéis da Comanda (o editor é do Painel de Propagandas, que esta versão não tem).
+PAPEIS = {papel: _TODOS_OS_PAPEIS[papel] for papel in ("admin", "caixa", "garcom", "cozinha")}
 # Página inicial de cada papel depois do login.
 INICIO = {"admin": "comandas.lista", "caixa": "comandas.lista", "garcom": "comandas.lista", "cozinha": "cozinha.tela"}
-SENHA_MINIMA = 6  # a equipe entra várias vezes por dia, no celular: 6 é o mínimo razoável numa rede local
-MAX_TENTATIVAS = 5
-JANELA_BLOQUEIO = 15 * 60  # segundos
 VALIDADE_ETAPA_2FA = 5 * 60  # tempo para digitar o código depois da senha
+_tentativas = LimiteDeTentativas(MAX_TENTATIVAS, JANELA_BLOQUEIO)   # senha e código, por IP (neste processo)
 
 
-class ErroUsuario(ValueError):
-    """Dados de usuário inválidos (mensagem pode ser mostrada na tela)."""
+def servico(conexao=None):
+    """As regras das contas de uma loja só (núcleo: src/domain/contas/locais.py) com o banco daqui."""
+    return ServicoDeContasLocais(RepositorioDeContasSQLite(conexao or db.obter()), SenhasWerkzeug(), PAPEIS, _tentativas)
 
 
-# ---------------------------------------------------------------------------
-# Regras de usuário (usadas pelas telas e pelo gerenciar.py)
-# ---------------------------------------------------------------------------
+def _usuario(conexao, usuario_id):
+    return ConsultasDeUsuarios(conexao).usuario(usuario_id)
 
-def validar_senha(senha):
-    if len(senha) < SENHA_MINIMA:
-        raise ErroUsuario(f"A senha precisa ter pelo menos {SENHA_MINIMA} caracteres.")
 
+# Atalhos com os nomes de antes (gerenciar.py e testes).
 
 def criar_usuario(conexao, usuario, senha, papel="garcom"):
-    usuario = usuario.strip()
-    if not usuario or len(usuario) > 40:
-        raise ErroUsuario("Informe um nome de usuário (até 40 caracteres).")
-    if papel not in PAPEIS:
-        raise ErroUsuario("Papel inválido.")
-    validar_senha(senha)
-    if conexao.execute("SELECT 1 FROM usuarios WHERE usuario = ?", (usuario,)).fetchone():
-        raise ErroUsuario(f"O usuário “{usuario}” já existe. Escolha outro nome.")
-    with conexao:
-        cursor = conexao.execute(
-            "INSERT INTO usuarios (usuario, senha_hash, papel, token_sessao) VALUES (?, ?, ?, ?)",
-            (usuario, generate_password_hash(senha), papel, secrets.token_hex(16)),
-        )
-    return cursor.lastrowid
+    return servico(conexao).criar(usuario, senha, papel)
 
 
 def trocar_senha(conexao, usuario_id, senha_nova):
-    validar_senha(senha_nova)
-    with conexao:
-        # Trocar o token derruba as sessões abertas em outros aparelhos.
-        conexao.execute(
-            "UPDATE usuarios SET senha_hash = ?, token_sessao = ? WHERE id = ?",
-            (generate_password_hash(senha_nova), secrets.token_hex(16), usuario_id),
-        )
+    servico(conexao).trocar_senha(usuario_id, senha_nova)
 
 
 def desativar_2fa(conexao, usuario_id):
-    with conexao:
-        # Trocar o token derruba as sessões abertas: quem tinha o celular perdido não continua dentro.
-        conexao.execute(
-            "UPDATE usuarios SET totp_segredo = NULL, totp_ultimo = 0, token_sessao = ? WHERE id = ?",
-            (secrets.token_hex(16), usuario_id),
-        )
-
-
-def conferir_codigo(conexao, linha, codigo):
-    """Confere o código do aplicativo e guarda o contador usado (o mesmo código não vale duas vezes)."""
-    contador = totp.verificar(linha["totp_segredo"], codigo, linha["totp_ultimo"])
-    if contador is None:
-        return False
-    with conexao:
-        conexao.execute("UPDATE usuarios SET totp_ultimo = ? WHERE id = ?", (contador, linha["id"]))
-    return True
+    servico(conexao).desativar_2fa(usuario_id)
 
 
 def existe_usuario(conexao):
-    return conexao.execute("SELECT 1 FROM usuarios LIMIT 1").fetchone() is not None
-
-
-def admins_ativos(conexao):
-    return conexao.execute("SELECT COUNT(*) FROM usuarios WHERE papel = 'admin' AND ativo = 1").fetchone()[0]
-
-
-# ---------------------------------------------------------------------------
-# Limite de tentativas de senha, por IP
-# ---------------------------------------------------------------------------
-
-_tentativas = {}
-_trava_tentativas = threading.Lock()
-
-
-def _bloqueado(ip):
-    agora = time.monotonic()
-    with _trava_tentativas:
-        recentes = [t for t in _tentativas.get(ip, []) if agora - t < JANELA_BLOQUEIO]
-        if recentes:
-            _tentativas[ip] = recentes
-        else:
-            _tentativas.pop(ip, None)
-        return len(recentes) >= MAX_TENTATIVAS
-
-
-def _registrar_falha(ip):
-    with _trava_tentativas:
-        _tentativas.setdefault(ip, []).append(time.monotonic())
-
-
-def _limpar_falhas(ip):
-    with _trava_tentativas:
-        _tentativas.pop(ip, None)
+    return servico(conexao).existe_alguem()
 
 
 # ---------------------------------------------------------------------------
@@ -151,7 +89,7 @@ def _carregar_usuario():
     usuario_id = session.get("usuario_id")
     if usuario_id is None:
         return
-    linha = db.obter().execute("SELECT * FROM usuarios WHERE id = ?", (usuario_id,)).fetchone()
+    linha = _usuario(db.obter(), usuario_id)
     # Sessão vale só enquanto o usuário existe, está ativo e não trocou a senha.
     if linha is None or not linha["ativo"] or not hmac.compare_digest(session.get("token", ""), linha["token_sessao"]):
         session.clear()
@@ -234,7 +172,7 @@ def configurar():
                 nome = request.form.get("estabelecimento", "").strip()
                 if nome:
                     db.gravar_config("nome_estabelecimento", nome[:80])
-                _iniciar_sessao(conexao.execute("SELECT * FROM usuarios WHERE id = ?", (usuario_id,)).fetchone())
+                _iniciar_sessao(_usuario(conexao, usuario_id))
                 log.info("Administrador “%s” criado no primeiro acesso", usuario)
                 flash("Tudo pronto! Comece cadastrando o cardápio.", "ok")
                 return redirect(url_for("cardapio.lista"))
@@ -250,31 +188,30 @@ def entrar():
         return redirect(url_for(INICIO[g.usuario["papel"]]))
     if request.method == "POST":
         ip = request.remote_addr or "?"
-        if _bloqueado(ip):
-            flash("Muitas tentativas erradas. Espere 15 minutos e tente de novo.", "erro")
-            return render_template("login.html"), 429
         nome = request.form.get("usuario", "").strip()
-        linha = conexao.execute("SELECT * FROM usuarios WHERE usuario = ?", (nome,)).fetchone()
-        if linha is None or not check_password_hash(linha["senha_hash"], request.form.get("senha", "")):
-            _registrar_falha(ip)
-            log.warning("Senha errada para “%s” vindo de %s", nome, ip)
-            flash("Usuário ou senha incorretos.", "erro")
-            return render_template("login.html"), 401
-        if not linha["ativo"]:
-            flash("Este usuário está desativado. Fale com o administrador.", "erro")
+        try:
+            conta = servico(conexao).entrar(nome, request.form.get("senha", ""), ip)
+        except BloqueadoAqui as erro:
+            flash(str(erro), "erro")
+            return render_template("login.html"), 429
+        except Desativado as erro:
+            flash(str(erro), "erro")
             return render_template("login.html"), 403
-        _limpar_falhas(ip)
+        except ErroUsuario as erro:
+            log.warning("Senha errada para “%s” vindo de %s", nome, ip)
+            flash(str(erro), "erro")
+            return render_template("login.html"), 401
         proximo = _proximo_seguro(request.args.get("proximo"))
-        if linha["totp_segredo"]:
+        if conta.tem_2fa:
             # Senha certa, mas ainda falta o código do celular: a sessão ainda não vale.
             session.clear()
-            session["2fa_usuario"] = linha["id"]
+            session["2fa_usuario"] = conta.id
             session["2fa_desde"] = time.time()
             session["2fa_proximo"] = proximo
             return redirect(url_for("auth.codigo"))
-        _iniciar_sessao(linha)
-        log.info("Login de “%s” vindo de %s", linha["usuario"], ip)
-        return redirect(proximo or url_for(INICIO[linha["papel"]]))
+        _iniciar_sessao(_usuario(conexao, conta.id))
+        log.info("Login de “%s” vindo de %s", conta.usuario, ip)
+        return redirect(proximo or url_for(INICIO[conta.papel]))
     return render_template("login.html")
 
 
@@ -287,26 +224,26 @@ def codigo():
         flash("Entre de novo com usuário e senha.", "erro")
         return redirect(url_for("auth.entrar"))
     conexao = db.obter()
-    linha = conexao.execute("SELECT * FROM usuarios WHERE id = ?", (usuario_id,)).fetchone()
-    if linha is None or not linha["ativo"] or not linha["totp_segredo"]:
+    contas = servico(conexao)
+    conta = contas.pode_pedir_codigo(usuario_id)
+    if conta is None:
         session.clear()
         return redirect(url_for("auth.entrar"))
     if request.method == "POST":
         ip = request.remote_addr or "?"
-        if _bloqueado(ip):
-            flash("Muitas tentativas erradas. Espere 15 minutos e tente de novo.", "erro")
+        try:
+            conta = contas.confirmar_codigo(conta, request.form.get("codigo", ""), ip)
+        except BloqueadoAqui as erro:
+            flash(str(erro), "erro")
             return render_template("login_codigo.html"), 429
-        if not conferir_codigo(conexao, linha, request.form.get("codigo", "")):
-            _registrar_falha(ip)
-            log.warning("Código de verificação errado para “%s” vindo de %s", linha["usuario"], ip)
-            flash("Código incorreto. Confira o relógio do celular e tente o código novo.", "erro")
+        except CodigoIncorreto as erro:
+            log.warning("Código de verificação errado para “%s” vindo de %s", conta.usuario, ip)
+            flash(str(erro), "erro")
             return render_template("login_codigo.html"), 401
-        _limpar_falhas(ip)
         proximo = session.get("2fa_proximo")
-        linha = conexao.execute("SELECT * FROM usuarios WHERE id = ?", (usuario_id,)).fetchone()
-        _iniciar_sessao(linha)
-        log.info("Login de “%s” (com verificação em duas etapas) vindo de %s", linha["usuario"], ip)
-        return redirect(proximo or url_for(INICIO[linha["papel"]]))
+        _iniciar_sessao(_usuario(conexao, conta.id))
+        log.info("Login de “%s” (com verificação em duas etapas) vindo de %s", conta.usuario, ip)
+        return redirect(proximo or url_for(INICIO[conta.papel]))
     return render_template("login_codigo.html")
 
 
@@ -336,21 +273,21 @@ def minha_conta():
     return render_template("minha_conta.html", **contexto)
 
 
+def _conta_logada():
+    return servico().conta(g.usuario["id"])
+
+
 @bp.route("/minha-conta/2fa/ativar", methods=["POST"])
 @login_obrigatorio
 def ativar_2fa():
     segredo = session.get("2fa_novo")
     if g.usuario["totp_segredo"] or not segredo:
         return redirect(url_for("auth.minha_conta"))
-    contador = totp.verificar(segredo, request.form.get("codigo", ""))
-    if contador is None:
-        flash("Código incorreto. Confira se leu o QR code certo e se o relógio do celular está certo.", "erro")
+    try:
+        servico().ativar_2fa(_conta_logada(), segredo, request.form.get("codigo", ""))
+    except ErroUsuario as erro:
+        flash(str(erro), "erro")
         return redirect(url_for("auth.minha_conta"))
-    conexao = db.obter()
-    with conexao:
-        conexao.execute(
-            "UPDATE usuarios SET totp_segredo = ?, totp_ultimo = ? WHERE id = ?", (segredo, contador, g.usuario["id"])
-        )
     session.pop("2fa_novo", None)
     log.info("Verificação em duas etapas ativada para “%s”", g.usuario["usuario"])
     flash("Verificação em duas etapas ativada. Da próxima vez, o código do aplicativo será pedido ao entrar.", "ok")
@@ -360,14 +297,12 @@ def ativar_2fa():
 @bp.route("/minha-conta/2fa/desativar", methods=["POST"])
 @login_obrigatorio
 def desativar_2fa_proprio():
-    conexao = db.obter()
-    if not check_password_hash(g.usuario["senha_hash"], request.form.get("senha", "")):
-        flash("Senha incorreta.", "erro")
-    elif not conferir_codigo(conexao, g.usuario, request.form.get("codigo", "")):
-        flash("Código incorreto.", "erro")
+    try:
+        servico().desativar_2fa_propria(_conta_logada(), request.form.get("senha", ""), request.form.get("codigo", ""))
+    except ErroUsuario as erro:
+        flash(str(erro), "erro")
     else:
-        desativar_2fa(conexao, g.usuario["id"])
-        _iniciar_sessao(conexao.execute("SELECT * FROM usuarios WHERE id = ?", (g.usuario["id"],)).fetchone())
+        _iniciar_sessao(_usuario(db.obter(), g.usuario["id"]))
         log.info("Verificação em duas etapas desativada por “%s”", g.usuario["usuario"])
         flash("Verificação em duas etapas desativada.", "ok")
     return redirect(url_for("auth.minha_conta"))
@@ -378,89 +313,61 @@ def desativar_2fa_proprio():
 def minha_senha():
     if request.method == "GET":
         return redirect(url_for("auth.minha_conta"))
-    conexao = db.obter()
-    if not check_password_hash(g.usuario["senha_hash"], request.form.get("atual", "")):
-        flash("A senha atual está errada.", "erro")
-    elif request.form.get("nova", "") != request.form.get("confirmacao", ""):
-        flash("As senhas novas não conferem.", "erro")
-    else:
-        try:
-            trocar_senha(conexao, g.usuario["id"], request.form.get("nova", ""))
-        except ErroUsuario as erro:
-            flash(str(erro), "erro")
-        else:
-            _iniciar_sessao(conexao.execute("SELECT * FROM usuarios WHERE id = ?", (g.usuario["id"],)).fetchone())
-            flash("Senha trocada.", "ok")
-            return redirect(url_for("auth.inicio"))
-    return redirect(url_for("auth.minha_conta"))
+    try:
+        servico().mudar_minha_senha(_conta_logada(), request.form.get("atual", ""), request.form.get("nova", ""),
+                                    request.form.get("confirmacao", ""))
+    except ErroUsuario as erro:
+        flash(str(erro), "erro")
+        return redirect(url_for("auth.minha_conta"))
+    _iniciar_sessao(_usuario(db.obter(), g.usuario["id"]))
+    flash("Senha trocada.", "ok")
+    return redirect(url_for("auth.inicio"))
 
 
 @bp.route("/usuarios", methods=["GET", "POST"])
 @papel_exigido("admin")
 def usuarios():
-    conexao = db.obter()
     if request.method == "POST":
         try:
-            criar_usuario(conexao, request.form.get("usuario", ""), request.form.get("senha", ""),
+            criar_usuario(db.obter(), request.form.get("usuario", ""), request.form.get("senha", ""),
                           request.form.get("papel", ""))
         except ErroUsuario as erro:
             flash(str(erro), "erro")
         else:
             flash("Usuário criado.", "ok")
         return redirect(url_for("auth.usuarios"))
-    lista = conexao.execute("SELECT * FROM usuarios ORDER BY ativo DESC, usuario").fetchall()
-    return render_template("usuarios.html", usuarios=lista, papeis=PAPEIS)
+    return render_template("usuarios.html", usuarios=ConsultasDeUsuarios(db.obter()).equipe(), papeis=PAPEIS)
 
 
 @bp.route("/usuarios/<int:usuario_id>", methods=["POST"])
 @papel_exigido("admin")
 def alterar_usuario(usuario_id):
-    conexao = db.obter()
-    alvo = conexao.execute("SELECT * FROM usuarios WHERE id = ?", (usuario_id,)).fetchone()
-    if alvo is None:
-        abort(404)
+    contas = servico()
     acao = request.form.get("acao")
-    eh_ultimo_admin = alvo["papel"] == "admin" and alvo["ativo"] and admins_ativos(conexao) <= 1
     try:
+        alvo = contas.conta(usuario_id)   # alguém que não existe: 404
         if acao == "senha":
-            trocar_senha(conexao, usuario_id, request.form.get("senha", ""))
-            flash(f"Senha de “{alvo['usuario']}” trocada.", "ok")
+            contas.trocar_senha(usuario_id, request.form.get("senha", ""))
+            flash(f"Senha de “{alvo.usuario}” trocada.", "ok")
         elif acao == "papel":
             papel = request.form.get("papel", "")
-            if papel not in PAPEIS:
-                raise ErroUsuario("Papel inválido.")
-            if eh_ultimo_admin and papel != "admin":
-                raise ErroUsuario("É preciso ter pelo menos um administrador ativo.")
-            with conexao:
-                # "Fecha contas" é uma permissão extra do garçom: não acompanha a pessoa para outro papel.
-                conexao.execute(
-                    "UPDATE usuarios SET papel = ?, fecha_conta = CASE WHEN ? = 'garcom' THEN fecha_conta ELSE 0 END "
-                    "WHERE id = ?",
-                    (papel, papel, usuario_id),
-                )
-            flash(f"“{alvo['usuario']}” agora é {PAPEIS[papel]}.", "ok")
+            alvo = contas.mudar_papel(usuario_id, papel)
+            flash(f"“{alvo.usuario}” agora é {PAPEIS[papel]}.", "ok")
         elif acao == "fecha_conta":
-            if alvo["papel"] != "garcom":
-                raise ErroUsuario("Só garçons recebem esta permissão (caixa e administrador já fecham contas).")
-            novo = 0 if alvo["fecha_conta"] else 1
-            with conexao:
-                conexao.execute("UPDATE usuarios SET fecha_conta = ? WHERE id = ?", (novo, usuario_id))
-            flash(f"“{alvo['usuario']}” {'agora pode' if novo else 'não pode mais'} fechar contas.", "ok")
+            alvo, novo = contas.alternar_fecha_conta(usuario_id)
+            flash(f"“{alvo.usuario}” {'agora pode' if novo else 'não pode mais'} fechar contas.", "ok")
         elif acao == "desativar_2fa":
-            desativar_2fa(conexao, usuario_id)
-            log.info("Verificação em duas etapas de “%s” desativada pelo administrador", alvo["usuario"])
-            flash(f"Verificação em duas etapas de “{alvo['usuario']}” desativada. O usuário pode ativar de novo em Minha conta.", "ok")
+            contas.desativar_2fa(usuario_id)
+            log.info("Verificação em duas etapas de “%s” desativada pelo administrador", alvo.usuario)
+            flash(f"Verificação em duas etapas de “{alvo.usuario}” desativada. O usuário pode ativar de novo em Minha conta.",
+                  "ok")
         elif acao == "ativo":
-            ativar = not alvo["ativo"]
-            if not ativar and eh_ultimo_admin:
-                raise ErroUsuario("É preciso ter pelo menos um administrador ativo.")
-            with conexao:
-                # Desativar também derruba as sessões abertas (troca o token).
-                conexao.execute("UPDATE usuarios SET ativo = ?, token_sessao = ? WHERE id = ?",
-                                (1 if ativar else 0, secrets.token_hex(16), usuario_id))
-            flash(f"“{alvo['usuario']}” {'reativado' if ativar else 'desativado'}.", "ok")
+            alvo, ativado = contas.alternar_ativo(usuario_id)
+            flash(f"“{alvo.usuario}” {'reativado' if ativado else 'desativado'}.", "ok")
         else:
             abort(400)
+    except NaoEncontrado:
+        abort(404)
     except ErroUsuario as erro:
         flash(str(erro), "erro")
     return redirect(url_for("auth.usuarios"))

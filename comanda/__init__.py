@@ -122,7 +122,7 @@ def create_app(sobrescrever=None):
 
     @app.route("/saude")
     def saude():
-        db.obter().execute("SELECT 1").fetchone()
+        db.responde()
         return {"ok": True}
 
     @app.after_request

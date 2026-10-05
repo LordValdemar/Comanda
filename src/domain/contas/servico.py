@@ -52,6 +52,10 @@ class ServicoDeContas:
     def existe_alguem(self) -> bool:
         return self._repo.existe_alguem()
 
+    def contas_chamadas(self, nome: str, loja: str | None = None) -> list[Conta]:
+        """Para a linha de comando: o mesmo nome pode existir em mais de uma loja (o código da loja desempata)."""
+        return self._repo.contas_com_nome((nome or "").strip(), loja or None)
+
     # -- cadastro e senha ------------------------------------------------------------------------
 
     def criar(self, empresa_id: int, nome: str, senha: str, papel: str = "editor", plataforma: bool = False) -> int:

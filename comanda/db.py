@@ -219,3 +219,8 @@ def gravar_config(chave, valor):
             "ON CONFLICT(chave) DO UPDATE SET valor = excluded.valor",
             (chave, str(valor)),
         )
+
+
+def responde():
+    """Para o monitoramento (/saude): levanta erro se o banco não responde."""
+    obter().execute("SELECT 1").fetchone()

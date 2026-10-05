@@ -14,8 +14,11 @@ import getpass
 import sys
 
 from comanda import arquivo_config, create_app, db
-from comanda.auth import PAPEIS, ErroUsuario, criar_usuario, desativar_2fa, trocar_senha
+from comanda.auth import PAPEIS, ErroUsuario, criar_usuario
+from comanda.auth import servico as servico_de_contas
 from comanda.backup import criar_backup, restaurar_backup
+from src.domain.erros import NaoEncontrado
+from src.infrastructure.sqlite import ConsultasDeUsuarios
 
 
 def pedir_senha():
@@ -46,7 +49,7 @@ def main(argumentos=None):
     with app.app_context():
         conexao = db.obter()
         if args.comando == "listar-usuarios":
-            for linha in conexao.execute("SELECT * FROM usuarios ORDER BY usuario"):
+            for linha in sorted(ConsultasDeUsuarios(conexao).equipe(), key=lambda u: u["usuario"].lower()):
                 situacao = "" if linha["ativo"] else " (desativado)"
                 print(f"{linha['usuario']:<25} {PAPEIS[linha['papel']]}{situacao}")
         elif args.comando == "criar-usuario":
@@ -56,19 +59,19 @@ def main(argumentos=None):
                 sys.exit(str(erro))
             print(f"Usuário “{args.usuario}” criado ({PAPEIS[args.papel]}).")
         elif args.comando in ("trocar-senha", "desativar-2fa"):
-            linha = conexao.execute("SELECT id FROM usuarios WHERE usuario = ?", (args.usuario,)).fetchone()
-            if linha is None:
-                sys.exit(f"Usuário “{args.usuario}” não encontrado.")
+            contas = servico_de_contas(conexao)
+            try:
+                conta = contas.pelo_nome(args.usuario)
+            except NaoEncontrado as erro:
+                sys.exit(str(erro))
             if args.comando == "desativar-2fa":
-                desativar_2fa(conexao, linha["id"])
+                contas.desativar_2fa(conta.id)
                 print(f"Verificação em duas etapas de “{args.usuario}” desativada.")
                 return
             try:
-                trocar_senha(conexao, linha["id"], pedir_senha())
+                contas.recuperar_acesso(conta.id, pedir_senha())   # senha nova e o usuário volta a ficar ativo
             except ErroUsuario as erro:
                 sys.exit(str(erro))
-            with conexao:
-                conexao.execute("UPDATE usuarios SET ativo = 1 WHERE id = ?", (linha["id"],))
             print("Senha trocada.")
         elif args.comando == "backup":
             print(f"Backup criado: {criar_backup(app.config)}")
